@@ -1,2 +1,9 @@
 data
-
+CACHEDIR.TAG
+bin
+lib  
+pyvenv.cfg
+include
+index
+.ipynb_checkpoints
+__pycache__
