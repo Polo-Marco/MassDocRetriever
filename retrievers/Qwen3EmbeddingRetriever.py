@@ -87,13 +87,13 @@ class Qwen3EmbeddingRetriever:
 
 if __name__=="__main__":
     # Building index (first time)
-    doc_objs = load_pickle_documents("data/doc_level_docs_dev.pkl")
+    doc_objs = load_pickle_documents("data/doc_level_docs.pkl")
     documents = [doc.page_content for doc in doc_objs]
     doc_ids = [doc.metadata['id'] for doc in doc_objs]
     #Qwen/Qwen3-Embedding-0.6B
     model_name="Qwen/Qwen3-Embedding-0.6B"
-    emb_path = "./embeddings/qwen306_dev.emb.npy"
-    index_path = "./indexes/qwen306_index_dev.faiss"
+    emb_path = "./embeddings/qwen306.emb.npy"
+    index_path = "./indexes/qwen306_index.faiss"
     retriever = Qwen3EmbeddingRetriever(
         model_name = model_name,
         documents=doc_objs,
@@ -105,13 +105,13 @@ if __name__=="__main__":
     )
 
     # Later, loading index (no need to provide documents)
-    retriever = Qwen3EmbeddingRetriever(
-        model_name=model_name,
-        documents=doc_objs,
-        doc_ids=doc_ids,
-        index_path=index_path,
-        emb_path=emb_path
-    )
+    # retriever = Qwen3EmbeddingRetriever(
+    #     model_name=model_name,
+    #     documents=doc_objs,
+    #     doc_ids=doc_ids,
+    #     index_path=index_path,
+    #     emb_path=emb_path
+    # )
 
     # Retrieval
     results = retriever.retrieve("天衛三軌道在天王星內部的磁層", k=10,batch_size=1)

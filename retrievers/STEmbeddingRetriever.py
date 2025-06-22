@@ -102,13 +102,13 @@ if __name__=="__main__":
     )
 
     # Later, loading index (no need to provide documents)
-    retriever = STEmbeddingRetriever(
-        model_name=model_name,
-        documents=doc_objs,
-        doc_ids=doc_ids,
-        index_path=index_path,
-        emb_path=emb_path,
-    )
+    # retriever = STEmbeddingRetriever(
+    #     model_name=model_name,
+    #     documents=doc_objs,
+    #     doc_ids=doc_ids,
+    #     index_path=index_path,
+    #     emb_path=emb_path,
+    # )
 
     # Retrieval
     results = retriever.retrieve("天衛三軌道在天王星內部的磁層", k=10,batch_size=1)

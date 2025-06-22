@@ -11,33 +11,6 @@ from retrievers.bm25 import BM25Retriever, LC_BM25Retriever
 from rerankers.embedding_reranker import BertReranker, LC_BertReranker,Qwen3Reranker
 from langchain_core.documents import Document
 
-# def bm25_worker_setup(bm25, doc_ids, corpus, topk):
-#     global bm25_global, doc_ids_global, corpus_global, topk_global
-#     bm25_global = bm25
-#     doc_ids_global = doc_ids
-#     corpus_global = corpus
-#     topk_global = topk
-
-# def bm25_worker(example):
-#     claim_text = example['claim']
-#     gold_evidence = example['evidence']
-#     gold_doc_ids = set()
-#     for group in gold_evidence:
-#         for item in group:
-#             if item and len(item) >= 3 and item[2] is not None:
-#                 gold_doc_ids.add(str(item[2]))
-#     retriever = BM25Retriever(bm25=bm25_global, documents=corpus_global, doc_ids=doc_ids_global)
-#     top_docs = retriever.retrieve(claim_text, k=topk_global)
-#     pred_doc_ids = [str(doc['doc_id']) for doc in top_docs]
-#     ndcg = compute_ndcg_at_k(pred_doc_ids, gold_doc_ids, k=topk_global)
-#     hit = int(evidence_match(pred_doc_ids, gold_evidence))
-#     return {
-#         "claim": claim_text,
-#         "bm25_docs": top_docs,
-#         "gold_doc_ids": list(gold_doc_ids),
-#         "evidence": gold_evidence,
-#     }
-
 def modular_eval(
     n_jobs=10, topk_bm25=20, topk_rerank=5,
     bm25_index_path="data/bm25_index.pkl", docs_path="data/doc_level_docs.pkl",
@@ -95,6 +68,7 @@ def modular_eval(
     # Results
     # ==== Print Table ====
     print("\n=== Performance Table (BM25 and Reranker) ===")
+    print(f"{'n':<6} {'BM25_NDCG':<12} {'BM25_Hit':<10} {'Rerank_NDCG':<14} {'Rerank_Hit':<10}")
     for n in cutoff_list:
         bm25_ndcg = sum(bm25_scores_at_n[n]['ndcg'])/len(bm25_scores_at_n[n]['ndcg'])
         bm25_hit = sum(bm25_scores_at_n[n]['hit'])/len(bm25_scores_at_n[n]['hit'])
