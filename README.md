@@ -19,38 +19,42 @@ A modular system for document retrieval, key sentence extraction, and sentence-l
 
 User Statement
 │
-├──► Document Retrieval (BM25, Embeddings, Hybrid...)
-│ │
-│ └──► Evaluation (NDCG@n)
+├──► Document Retrieval
+│   ├── BM25, Dense, Hybrid → `retrievers/`
+│   └── Evaluation (NDCG@n) → `evaluation/`
 │
 ├──► Sentence Retrieval (from top documents)
-│ │
-│ └──► Evaluation (F1)
+│   ├── Sentence-level extraction → `pipeline.py`, `utils/`
+│   └── Evaluation (F1) → `evaluation/`
 │
-├──► Sentence Classification (Supportive / Non-supportive / Neutral)
-│ │
-│ └──► Evaluation (F1)
+├──► Sentence Classification
+│   ├── Supportive / Non-supportive / Neutral → `rerankers/`
+│   └── Evaluation (F1) → `evaluation/`
 │
-└──► (Optional) Search Agent: Iterative retrieval and classification if confidence is low
-
-yaml
-Copy
-Edit
+├──► (Optional) Search Agent
+│   ├── Iterative retrieval/classification if confidence is low
+│   └── (Under development or in `scripts/`)
+│
+├──► Experiments & Analysis
+│   └── Notebooks → `notebooks/`, `visualize_result.ipynb`
+│
+└──► Entry Point
+    └── Main script → `main.py`
 
 ---
 
 ## 🚧 TODO List
 
 ### 1. **Document Retrieval Pipeline**
-   - [ ] Implement BM25 retriever
-   - [ ] Implement text embedding retriever (e.g., BERT/SBERT/BGE)
+   - [x] Implement BM25 retriever
+   - [x] Implement text embedding retriever (e.g., BERT/SBERT/BGE)
    - [ ] (Optional) Implement hybrid retriever
    - [ ] Compare retrievers on same set of queries
 
 ### 2. **Document Retrieval Evaluation**
-   - [ ] Prepare/query gold standard relevance data for statements
-   - [ ] Implement NDCG@n and other ranking metrics
-   - [ ] Log and visualize retrieval performance
+   - [x] Prepare/query gold standard relevance data for statements
+   - [x] Implement NDCG@n and other ranking metrics
+   - [x] Log and visualize retrieval performance
 
 ### 3. **Sentence Retrieval Pipeline**
    - [ ] Extract most relevant sentences from top documents (similarity, keyword overlap, etc.)
@@ -123,8 +127,8 @@ Edit
 
 ## 📅 Project Log
 
-- [ ] Day 1: Project initialization, README, pipeline design
-- [ ] Next: (update as you go)
+- [X] Day 1: Project initialization, README, pipeline design
+- [x] Day 2: Retriever implementation, evaluation
 
 ---
 
