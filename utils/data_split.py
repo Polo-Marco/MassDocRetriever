@@ -1,6 +1,6 @@
 import random
 import os
-from utils import clean_spacing, strF2H, strF2H_w_punctuation
+from preprocess_wiki import text_preprocess
 
 def split_jsonl(input_path, train_path, test_path, train_ratio=0.8, seed=42):
     with open(input_path, "r", encoding="utf-8") as f:
@@ -13,9 +13,9 @@ def split_jsonl(input_path, train_path, test_path, train_ratio=0.8, seed=42):
 
     os.makedirs(os.path.dirname(train_path), exist_ok=True)
     with open(train_path, "w", encoding="utf-8") as f:
-        f.writelines(train_lines)
+        f.writelines(text_preprocess(train_lines))
     with open(test_path, "w", encoding="utf-8") as f:
-        f.writelines(test_lines)
+        f.writelines(text_preprocess(test_lines))
 
     print(f"Total: {len(lines)}  |  Train: {len(train_lines)}  |  Test: {len(test_lines)}")
     print(f"Train set: {train_path}")
@@ -24,8 +24,8 @@ def split_jsonl(input_path, train_path, test_path, train_ratio=0.8, seed=42):
 # Usage example:
 split_jsonl(
     input_path="../data/public_train.jsonl",
-    train_path="../data/train.jsonl",
-    test_path="../data/test.jsonl",
+    train_path="../data/formated_train.jsonl",
+    test_path="../data/formated_test.jsonl",
     train_ratio=0.8
 )
 print("Split Done")

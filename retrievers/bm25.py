@@ -50,3 +50,23 @@ class BM25Retriever:
             }
             for idx in topk_idx
         ]
+    
+# langchain wrapper
+from langchain_core.retrievers import BaseRetriever
+from langchain_core.documents import Document
+from typing import Any
+from pydantic import Field
+
+class LC_BM25Retriever(BaseRetriever):
+    custom_bm25: Any = Field(...)
+    k: int = Field(default=20)
+
+    def get_relevant_documents(self, query):
+        bm25_results = self.custom_bm25.retrieve(query, k=self.k)
+        return [
+            Document(
+                page_content=doc['text'],
+                metadata={'doc_id': doc['doc_id'], 'bm25_score': doc['score']}
+            )
+            for doc in bm25_results
+        ]

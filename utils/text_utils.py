@@ -1,6 +1,8 @@
 
 import re
-
+def text_preprocess(text):
+    '''preprocess for half characters'''
+    return clean_spacing(strF2H_w_punctuation(text))
 def clean_spacing(text):
     # Remove spaces before and after Chinese and ASCII punctuation
     punctuation = "，。！？：；、（）()「」『』《》【】—…·,.;:?!"

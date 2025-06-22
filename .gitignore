@@ -4,6 +4,9 @@ bin
 lib  
 pyvenv.cfg
 include
-index
+indexes
+embeddings
 .ipynb_checkpoints
+*json
+share
 __pycache__
