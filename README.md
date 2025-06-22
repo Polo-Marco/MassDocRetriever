@@ -16,7 +16,7 @@ A modular system for document retrieval, key sentence extraction, and sentence-l
 ---
 
 ## 🗂️ System Architecture
-
+```
 User Statement
 │
 ├──► Document Retrieval
@@ -40,7 +40,7 @@ User Statement
 │
 └──► Entry Point
     └── Main script → `main.py`
-
+```
 ---
 
 ## 🚧 TODO List
