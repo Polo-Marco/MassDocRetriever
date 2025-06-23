@@ -1,26 +1,30 @@
 # rerankers/embedding_reranker.py
+# qwen3 text embedding
 import torch
-import numpy as np
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
-#qwen3 text embedding
-import numpy as np
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM,AutoModel
 
 class Qwen3Reranker:
-    def __init__(self,
-                 model_name="Qwen/Qwen3-Reranker-0.6B",
-                 device=None,
-                 instruction=None,
-                 batch_size=8,
-                 max_length=768):
+    def __init__(
+        self,
+        model_name="Qwen/Qwen3-Reranker-0.6B",
+        device=None,
+        instruction=None,
+        batch_size=8,
+        max_length=768,
+    ):
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.batch_size = batch_size
         self.max_length = max_length
-        self.instruction = instruction or 'Given a statement, retrieve relevant passages that relate to the statement.'
+        self.instruction = (
+            instruction
+            or "Given a statement, retrieve relevant passages that relate to the statement."
+        )
 
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side='left')
-        self.model = AutoModelForCausalLM.from_pretrained(model_name).to(self.device).eval()
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
+        self.model = (
+            AutoModelForCausalLM.from_pretrained(model_name).to(self.device).eval()
+        )
 
         # Optionally: flash_attention_2 and fp16 (if your environment supports)
         # self.model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, attn_implementation="flash_attention_2").to(self.device).eval()
@@ -28,10 +32,14 @@ class Qwen3Reranker:
         self.token_false_id = self.tokenizer.convert_tokens_to_ids("no")
         self.token_true_id = self.tokenizer.convert_tokens_to_ids("yes")
 
-        self.prefix = "<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be \"yes\" or \"no\".<|im_end|>\n<|im_start|>user\n"
+        self.prefix = '<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be "yes" or "no".<|im_end|>\n<|im_start|>user\n'
         self.suffix = "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
-        self.prefix_tokens = self.tokenizer.encode(self.prefix, add_special_tokens=False)
-        self.suffix_tokens = self.tokenizer.encode(self.suffix, add_special_tokens=False)
+        self.prefix_tokens = self.tokenizer.encode(
+            self.prefix, add_special_tokens=False
+        )
+        self.suffix_tokens = self.tokenizer.encode(
+            self.suffix, add_special_tokens=False
+        )
 
     def format_instruction(self, query, doc):
         return f"<Instruct>: {self.instruction}\n<Query>: {query}\n<Document>: {doc}"
@@ -42,15 +50,22 @@ class Qwen3Reranker:
         inputs = tokenizer(
             pairs,
             padding=False,
-            truncation='longest_first',
+            truncation="longest_first",
             return_attention_mask=False,
-            max_length=self.max_length - len(self.prefix_tokens) - len(self.suffix_tokens)
+            max_length=self.max_length
+            - len(self.prefix_tokens)
+            - len(self.suffix_tokens),
         )
         # Add prefix/suffix tokens
-        for i, ele in enumerate(inputs['input_ids']):
-            inputs['input_ids'][i] = self.prefix_tokens + ele + self.suffix_tokens
+        for i, ele in enumerate(inputs["input_ids"]):
+            inputs["input_ids"][i] = self.prefix_tokens + ele + self.suffix_tokens
         # Pad and move to device
-        inputs = tokenizer.pad(inputs, padding='max_length', return_tensors="pt", max_length=self.max_length)
+        inputs = tokenizer.pad(
+            inputs,
+            padding="max_length",
+            return_tensors="pt",
+            max_length=self.max_length,
+        )
         for key in inputs:
             inputs[key] = inputs[key].to(self.device)
         return inputs
@@ -70,11 +85,11 @@ class Qwen3Reranker:
 
     def rerank(self, claim, candidate_docs, topn=5):
         # claim: str; candidate_docs: list of {"doc_id", "score", "text"}
-        pairs = [self.format_instruction(claim, doc['text']) for doc in candidate_docs]
+        pairs = [self.format_instruction(claim, doc["text"]) for doc in candidate_docs]
         # Batched
         scores = []
         for i in range(0, len(pairs), self.batch_size):
-            batch_pairs = pairs[i:i+self.batch_size]
+            batch_pairs = pairs[i : i + self.batch_size]
             inputs = self.process_inputs(batch_pairs)
             batch_scores = self.compute_logits(inputs)
             scores.extend(batch_scores)
@@ -82,40 +97,39 @@ class Qwen3Reranker:
         reranked = []
         for doc, score in zip(candidate_docs, scores):
             doc = dict(doc)
-            doc['qwen_score'] = float(score)
+            doc["qwen_score"] = float(score)
             reranked.append(doc)
-        reranked = sorted(reranked, key=lambda x: x['qwen_score'], reverse=True)
+        reranked = sorted(reranked, key=lambda x: x["qwen_score"], reverse=True)
         return reranked[:topn]
-    
-#langchain wrapper
-from langchain_core.runnables import Runnable
-from langchain_core.documents import Document
+
+
 from typing import Any
+
+from langchain_core.documents import Document
+# langchain wrapper
+from langchain_core.runnables import Runnable
 from pydantic import Field
+
 
 class LC_Reranker(Runnable):
     custom_reranker: Any = Field(...)
     topn: int = Field(default=5)
+
     def __init__(self, custom_reranker, topn=5):
         self.custom_reranker = custom_reranker
         self.topn = topn
 
     def invoke(self, input, **kwargs):
         # input: {'query': str, 'docs': List[Document]}
-        query = input['query']
-        docs = input['docs']
+        query = input["query"]
+        docs = input["docs"]
         candidates = [
             {
-                "doc_id": doc.metadata['doc_id'],
-                "score": doc.metadata.get('bm25_score', 0),
-                "text": doc.page_content
-            } for doc in docs
+                "doc_id": doc.metadata["doc_id"],
+                "score": doc.metadata.get("bm25_score", 0),
+                "text": doc.page_content,
+            }
+            for doc in docs
         ]
         reranked = self.custom_reranker.rerank(query, candidates, topn=self.topn)
-        return [
-            Document(
-                page_content=doc['text'],
-                metadata=doc
-            ) for doc in reranked
-        ]
-    
+        return [Document(page_content=doc["text"], metadata=doc) for doc in reranked]

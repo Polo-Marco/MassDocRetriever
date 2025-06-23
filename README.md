@@ -129,7 +129,7 @@ User Statement
 
 - [X] Day 1: Project initialization, README, pipeline design
 - [x] Day 2: Qwen Retriever implementation, evaluation
-- [x] Day 3: Qwen Reranker and modular evaluation (Retriever+Reranker). Qwen Retriever with FAISS vector database.
+- [x] Day 3: Qwen Reranker and modular evaluation (Retriever+Reranker). Qwen Retriever with FAISS vector database. Set pre-commit.
 - [ ] Day 4: Sentence Retrieval
 
 ---

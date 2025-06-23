@@ -1,15 +1,24 @@
-from utils.data_utils import load_pickle_documents
-from sentence_transformers import SentenceTransformer
-from langchain_core.documents import Document
-import numpy as np
-import faiss
 import os
 import time
-import pickle
+
+import faiss
+import numpy as np
+from sentence_transformers import SentenceTransformer
+
+from utils.data_utils import load_pickle_documents
+
 
 class STEmbeddingRetriever:
-    def __init__(self, model_name="BAAI/bge-large-zh",
-                 documents=None, doc_ids=None, index_path=None, emb_path=None, batch_size=32, use_gpu=False):
+    def __init__(
+        self,
+        model_name="BAAI/bge-large-zh",
+        documents=None,
+        doc_ids=None,
+        index_path=None,
+        emb_path=None,
+        batch_size=32,
+        use_gpu=False,
+    ):
         """
         model_name: HuggingFace/SBERT model name
         documents: List[str] or List[Document] - texts or Document objects
@@ -19,7 +28,7 @@ class STEmbeddingRetriever:
         batch_size: Batch size for encoding
         use_gpu: If True, use FAISS GPU
         """
-        self.max_length=512
+        self.max_length = 512
         self.model = SentenceTransformer(model_name)
         # If Document objects, extract .page_content
         if documents and hasattr(documents[0], "page_content"):
@@ -28,7 +37,9 @@ class STEmbeddingRetriever:
             self.corpus = documents
         self.doc_ids = doc_ids or (list(range(len(self.corpus))) if self.corpus else [])
         self.index_path = index_path
-        self.emb_path = emb_path or (index_path.replace(".faiss", ".emb.npy") if index_path else None)
+        self.emb_path = emb_path or (
+            index_path.replace(".faiss", ".emb.npy") if index_path else None
+        )
         self.batch_size = batch_size
         self.index = None
         self.embeddings = None
@@ -44,8 +55,11 @@ class STEmbeddingRetriever:
             s_time = time.time()
             # Always pass strings to encode!
             self.embeddings = self.model.encode(
-                self.corpus, max_length = self.max_length,
-                batch_size=self.batch_size, show_progress_bar=True, normalize_embeddings=True
+                self.corpus,
+                max_length=self.max_length,
+                batch_size=self.batch_size,
+                show_progress_bar=True,
+                normalize_embeddings=True,
             ).astype(np.float32)
             self.index = faiss.IndexFlatIP(self.embeddings.shape[1])
             self.index.add(self.embeddings)
@@ -57,7 +71,9 @@ class STEmbeddingRetriever:
                 print(f"Saved embeddings to {self.emb_path}")
             print(f"Finish indexing in {time.time() - s_time:.1f} seconds")
         else:
-            raise ValueError("Must provide either FAISS index or documents to build index.")
+            raise ValueError(
+                "Must provide either FAISS index or documents to build index."
+            )
 
         # Move to GPU if needed
         if use_gpu and self.index is not None:
@@ -67,7 +83,8 @@ class STEmbeddingRetriever:
     def retrieve(self, query, k=5, batch_size=1):
         # Embed the query (must be string)
         query_emb = self.model.encode(
-            [query], normalize_embeddings=True,
+            [query],
+            normalize_embeddings=True,
             batch_size=batch_size,
         ).astype(np.float32)
         # FAISS search
@@ -77,20 +94,22 @@ class STEmbeddingRetriever:
         return [
             {
                 "doc_id": self.doc_ids[idx],
-                "score": float(D[rank]),   # Cosine similarity (since normalized)
-                "text": self.corpus[idx]
+                "score": float(D[rank]),  # Cosine similarity (since normalized)
+                "text": self.corpus[idx],
             }
             for rank, idx in enumerate(I)
         ]
-if __name__=="__main__":
+
+
+if __name__ == "__main__":
     # Building index (first time)
     doc_objs = load_pickle_documents("data/doc_level_docs.pkl")
     documents = [doc.page_content for doc in doc_objs]
-    doc_ids = [doc.metadata['id'] for doc in doc_objs]
-    model_name="shibing624/text2vec-base-chinese"
+    doc_ids = [doc.metadata["id"] for doc in doc_objs]
+    model_name = "shibing624/text2vec-base-chinese"
     emb_path = "./embeddings/text2vec-base-chinese.emb.npy"
     index_path = "./indexes/text2vec-base-chinese_index.faiss"
-    #BAAI/bge-large-zh: batch 512, shibing624/text2vec-base-chinese
+    # BAAI/bge-large-zh: batch 512, shibing624/text2vec-base-chinese
     retriever = STEmbeddingRetriever(
         model_name=model_name,
         documents=doc_objs,
@@ -98,7 +117,7 @@ if __name__=="__main__":
         index_path=index_path,
         emb_path=emb_path,
         batch_size=512,
-        use_gpu=True
+        use_gpu=True,
     )
 
     # Later, loading index (no need to provide documents)
@@ -111,6 +130,6 @@ if __name__=="__main__":
     # )
 
     # Retrieval
-    results = retriever.retrieve("天衛三軌道在天王星內部的磁層", k=10,batch_size=1)
+    results = retriever.retrieve("天衛三軌道在天王星內部的磁層", k=10, batch_size=1)
     for r in results:
         print(r["doc_id"], r["score"], r["text"][:5])

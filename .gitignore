@@ -1,7 +1,7 @@
 data
 CACHEDIR.TAG
 bin
-lib  
+lib
 pyvenv.cfg
 include
 indexes

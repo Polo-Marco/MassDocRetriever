@@ -1,11 +1,15 @@
 # utils/data_utils.py
 
-import pickle
 import json
+import pickle
+
 from utils.text_utils import text_preprocess
+
+
 def load_pickle_documents(pkl_path):
     with open(pkl_path, "rb") as f:
         return pickle.load(f)
+
 
 def process_evidence(evidence, preprocess_func):
     # evidence is a list of lists of evidence spans
@@ -21,6 +25,7 @@ def process_evidence(evidence, preprocess_func):
             new_group.append(span)
         new_evidence.append(new_group)
     return new_evidence
+
 
 def load_claims(jsonl_path, exclude_nei=False):
     """
@@ -45,8 +50,8 @@ def load_claims(jsonl_path, exclude_nei=False):
             claims.append(obj)
     return claims
 
+
 # Example usage:
 if __name__ == "__main__":
-    claims = load_claims("./data/test.jsonl",exclude_nei=False)
+    claims = load_claims("./data/test.jsonl", exclude_nei=False)
     print(claims[20:50])
-
