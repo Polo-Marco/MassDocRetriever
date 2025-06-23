@@ -8,7 +8,7 @@ import time
 import pickle
 
 class STEmbeddingRetriever:
-    def __init__(self, model_name="hfl/chinese-pert-base",#hfl/chinese-pert-base
+    def __init__(self, model_name="BAAI/bge-large-zh",
                  documents=None, doc_ids=None, index_path=None, emb_path=None, batch_size=32, use_gpu=False):
         """
         model_name: HuggingFace/SBERT model name
@@ -30,7 +30,6 @@ class STEmbeddingRetriever:
         self.index_path = index_path
         self.emb_path = emb_path or (index_path.replace(".faiss", ".emb.npy") if index_path else None)
         self.batch_size = batch_size
-
         self.index = None
         self.embeddings = None
 
@@ -68,7 +67,8 @@ class STEmbeddingRetriever:
     def retrieve(self, query, k=5, batch_size=1):
         # Embed the query (must be string)
         query_emb = self.model.encode(
-            [query], normalize_embeddings=True,batch_size=batch_size
+            [query], normalize_embeddings=True,
+            batch_size=batch_size,
         ).astype(np.float32)
         # FAISS search
         D, I = self.index.search(query_emb, k)
@@ -87,9 +87,9 @@ if __name__=="__main__":
     doc_objs = load_pickle_documents("data/doc_level_docs.pkl")
     documents = [doc.page_content for doc in doc_objs]
     doc_ids = [doc.metadata['id'] for doc in doc_objs]
-    model_name="BAAI/bge-large-zh"
-    emb_path = "./embeddings/bge_large.emb.npy"
-    index_path = "./indexes/bge_large_index.faiss"
+    model_name="shibing624/text2vec-base-chinese"
+    emb_path = "./embeddings/text2vec-base-chinese.emb.npy"
+    index_path = "./indexes/text2vec-base-chinese_index.faiss"
     #BAAI/bge-large-zh: batch 512, shibing624/text2vec-base-chinese
     retriever = STEmbeddingRetriever(
         model_name=model_name,
