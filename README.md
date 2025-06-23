@@ -121,7 +121,7 @@ User Statement
 
 ## 📊 Results
 
-> _Track performance of each module and the full pipeline as you iterate._
+> _Track performance of each module_
 
 ---
 
@@ -137,7 +137,4 @@ User Statement
 - Suggestions for data format, evaluation, or module design are welcome!
 - Currently using a local Chinese Wikipedia corpus; please note if you want to adapt for a different domain or language.
 
----
 
-If you need starter code, baseline implementations, or advice for module design, just ask!  
-Let’s build a world-class Chinese Wikipedia retrieval and reasoning system!
