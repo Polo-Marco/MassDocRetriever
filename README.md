@@ -1,6 +1,6 @@
 # Chinese Wikipedia Document Retrieval and Stance Classification System
 
-A modular system for document retrieval, key sentence extraction, and sentence-level stance classification for user-provided statements, built on a local Chinese Wikipedia corpus.  
+A modular system for document retrieval, key sentence extraction, and sentence-level stance classification for user-provided statements, built on a local Chinese Wikipedia corpus.
 **Built with LangChain, supporting classical (BM25) and neural (BERT-based) methods, and designed for easy benchmarking, extension, and research.**
 
 ---
@@ -8,7 +8,7 @@ A modular system for document retrieval, key sentence extraction, and sentence-l
 ## 📚 Project Overview
 
 - **Input:** A user statement (e.g., "The Han Dynasty lasted over 400 years.")
-- **Output:**  
+- **Output:**
   - Top relevant documents (with retrieval scores)
   - Key sentences from those documents (with scores)
   - Stance label (*supportive*, *non-supportive*, or *neutral*) for each key sentence
@@ -47,13 +47,13 @@ User Statement
 
 ### 1. **Document Retrieval Pipeline**
    - [x] Implement BM25 retriever
-   - [x] Implement text embedding retriever (e.g., BERT/SBERT/BGE)
-   - [ ] (Optional) Implement hybrid retriever
-   - [ ] Compare retrievers on same set of queries
+   - [x] Implement text embedding retriever (e.g., BERT/SBERT/BGE/QWEN3)
+   - [x] (Optional) Implement hybrid retriever
+   - [x] Compare retrievers on same set of queries
 
 ### 2. **Document Retrieval Evaluation**
    - [x] Prepare/query gold standard relevance data for statements
-   - [x] Implement NDCG@n and other ranking metrics
+   - [x] Implement NDCG@n and HitRate@n
    - [x] Log and visualize retrieval performance
 
 ### 3. **Sentence Retrieval Pipeline**
@@ -78,11 +78,11 @@ User Statement
    - [ ] If confidence is low, reformulate query and repeat retrieval/sentence extraction up to N times
    - [ ] Document agent stopping criteria and performance
 
-### 8. **Full Pipeline “Strict” Evaluation**
-   - [ ] Define a strict “success”:  
-        1. Document retrieval hits at least one relevant document  
-        2. Sentence retrieval finds at least one key sentence  
-        3. Sentence classification is correct  
+### 8. **Full Pipeline Evaluation**
+   - [ ] Define a strict “success”:
+        1. Document retrieval hits at least one relevant document
+        2. Sentence retrieval finds at least one key sentence
+        3. Sentence classification is correct
      - [ ] Compute F1 and other metrics for end-to-end pipeline
 
 ---
@@ -90,7 +90,7 @@ User Statement
 ## 📝 Data
 
 - **Corpus:** Local files from Chinese Wikipedia (e.g., .txt, .json, or .csv format; details TBD)
-- **Gold Standards:**  
+- **Gold Standards:**
   - Statement–relevant document pairs (for document retrieval)
   - Statement–key sentence pairs (for sentence retrieval)
   - Labeled sentences (supportive/non-supportive/neutral) for stance classification
@@ -128,7 +128,9 @@ User Statement
 ## 📅 Project Log
 
 - [X] Day 1: Project initialization, README, pipeline design
-- [x] Day 2: Retriever implementation, evaluation
+- [x] Day 2: Qwen Retriever implementation, evaluation
+- [x] Day 3: Qwen Reranker and modular evaluation (Retriever+Reranker). Qwen Retriever with FAISS vector database.
+- [ ] Day 4: Sentence Retrieval
 
 ---
 
@@ -136,5 +138,3 @@ User Statement
 
 - Suggestions for data format, evaluation, or module design are welcome!
 - Currently using a local Chinese Wikipedia corpus; please note if you want to adapt for a different domain or language.
-
-
