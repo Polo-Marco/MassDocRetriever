@@ -17,7 +17,7 @@ corpus_global = None
 topk_global = None
 
 
-def dense_worker(example, retriever, batch_size=1, topk=10):
+def doc_dense_worker(example, retriever, topk=10):
     claim_text = example["claim"]
     gold_evidence = example["evidence"]
     gold_doc_ids = set()
@@ -25,7 +25,28 @@ def dense_worker(example, retriever, batch_size=1, topk=10):
         for item in group:
             if item and len(item) >= 3 and item[2] is not None:
                 gold_doc_ids.add(str(item[2]))
-    top_docs = retriever.retrieve(claim_text, k=topk, batch_size=batch_size)
+    top_docs = retriever.retrieve(claim_text, k=topk)
+    pred_doc_ids = [str(doc["doc_id"]) for doc in top_docs]
+    ndcg = compute_ndcg_at_k(pred_doc_ids, gold_doc_ids, k=topk)
+    hit = int(evidence_match(pred_doc_ids, gold_evidence))
+    return {
+        "claim": claim_text,
+        "dense_docs": top_docs,
+        "gold_doc_ids": list(gold_doc_ids),
+        "evidence": gold_evidence,
+        "ndcg": ndcg,
+        "hit": hit,
+    }
+#TODO
+def line_dense_worker(example, retriever, topk=10):
+    claim_text = example["claim"]
+    gold_evidence = example["evidence"]
+    gold_doc_ids = set()
+    for group in gold_evidence:
+        for item in group:
+            if item and len(item) >= 3 and item[2] is not None:
+                gold_doc_ids.add(str(item[2]))
+    top_docs = retriever.retrieve(claim_text, k=topk)
     pred_doc_ids = [str(doc["doc_id"]) for doc in top_docs]
     ndcg = compute_ndcg_at_k(pred_doc_ids, gold_doc_ids, k=topk)
     hit = int(evidence_match(pred_doc_ids, gold_evidence))
@@ -51,7 +72,7 @@ def get_hybrid_results(bm25_docs, dense_docs, k=10):
     return combined
 
 
-def main(mode="bm25", n_jobs=10, topk=10):
+def doc_retrieval_eval(mode="bm25", n_jobs=10, topk=10):
     cutoff_list = [1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 100]
     doc_objs = load_pickle_documents("data/doc_level_docs.pkl")
     doc_ids = [doc.metadata["id"] for doc in doc_objs]
@@ -81,22 +102,22 @@ def main(mode="bm25", n_jobs=10, topk=10):
         # model_name = "shibing624/text2vec-base-chinese"
         # index_path = "indexes/text2vec-base-chinese_index.faiss"
         # emb_path = "embeddings/text2vec-base-chinese.emb.npy"
-        model_name = "Qwen/Qwen3-Embedding-0.6B"
-        emb_path = "./embeddings/qwen3_06b.emb.npy"
-        index_path = "./indexes/qwen3_06b_index.faiss"
         retriever = (
             Qwen3EmbeddingRetriever(  # Qwen3EmbeddingRetriever STEmbeddingRetriever
-                model_name=model_name,
+                model_name="Qwen/Qwen3-Embedding-0.6B",
                 documents=doc_objs,
                 doc_ids=doc_ids,
-                index_path=index_path,
-                emb_path=emb_path,
+                index_path="./indexes/qwen3_06b_1024_index.faiss",
+                emb_path="./embeddings/qwen3_06b_1024.emb.npy",
             )
         )
+        retriever.load_model()
+        retriever.load_index()
+        
         dense_results = []
         for example in tqdm(test_claims):
             dense_results.append(
-                dense_worker(example, retriever, batch_size=32, topk=topk)
+                doc_dense_worker(example, retriever, batch_size=32, topk=topk)
             )
         if mode == "dense":
             results = dense_results
@@ -143,10 +164,12 @@ def main(mode="bm25", n_jobs=10, topk=10):
                 int(evidence_match(pred_doc_ids, gold_evidence))
             )
     show_retrieval_metrics(cutoff_list, scores_at_n, tag=mode)
-
+# TODO
+def sentence_retrieval_eval():
+    return None
+    
 
 if __name__ == "__main__":
     import sys
-
     mode = sys.argv[1] if len(sys.argv) > 1 else "bm25"
-    main(mode=mode, n_jobs=20, topk=100)
+    doc_retrieval_eval(mode=mode, n_jobs=20, topk=100)

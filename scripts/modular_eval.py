@@ -9,7 +9,7 @@ from evaluation.eval_utils import evidence_match, show_retrieval_metrics
 from rerankers.embedding_reranker import Qwen3Reranker
 from retrievers.Qwen3EmbeddingRetriever import Qwen3EmbeddingRetriever
 from scripts.run_bm25_eval import bm25_worker, init_worker
-from scripts.run_retriever_eval import dense_worker
+from scripts.run_retriever_eval import doc_dense_worker
 from utils.data_utils import load_claims, load_pickle_documents
 
 

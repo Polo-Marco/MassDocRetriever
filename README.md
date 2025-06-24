@@ -57,8 +57,8 @@ User Statement
    - [x] Log and visualize retrieval performance
 
 ### 3. **Sentence Retrieval Pipeline**
-   - [ ] Extract most relevant sentences from top documents (similarity, keyword overlap, etc.)
-   - [ ] (Optional) Experiment with LLM-based sentence scoring
+   - [X] Extract most relevant sentences from top documents (similarity, keyword overlap, etc.)
+   - [X] (Optional) Experiment with LLM-based sentence scoring
 
 ### 4. **Sentence Retrieval Evaluation**
    - [ ] Prepare gold standard (statements with relevant key sentences labeled)
@@ -83,7 +83,7 @@ User Statement
         1. Document retrieval hits at least one relevant document
         2. Sentence retrieval finds at least one key sentence
         3. Sentence classification is correct
-     - [ ] Compute F1 and other metrics for end-to-end pipeline
+   - [ ] Compute F1 and other metrics for end-to-end pipeline
 
 ---
 
@@ -130,7 +130,8 @@ User Statement
 - [X] Day 1: Project initialization, README, pipeline design
 - [x] Day 2: Qwen Retriever implementation, evaluation
 - [x] Day 3: Qwen Reranker and modular evaluation (Retriever+Reranker). Qwen Retriever with FAISS vector database. Set pre-commit.
-- [ ] Day 4: Sentence Retrieval
+- [x] Day 4: Finish Sentence Retrieval, Adjust retriever for better modularity.
+- [ ] Day 5: Optimize code with DeepSeed support, Sentence Retrieval Evaluation and Sentence Reranker
 
 ---
 
