@@ -43,7 +43,23 @@ def bm25_worker(example):
         "bm25_docs": top_docs,
         "gold_doc_ids": list(gold_doc_ids),
         "evidence": gold_evidence,
+        "ndcg": ndcg,
+        "hit": hit,
     }
+
+
+def multi_process_bm25_module(
+    test_claims, bm25_index_path, doc_ids, documents, n_jobs=10, topk=5
+):
+    with open(bm25_index_path, "rb") as f:
+        bm25 = pickle.load(f)
+    # Multiprocessing BM25
+    with Pool(
+        n_jobs, initializer=init_worker, initargs=(bm25, doc_ids, documents, topk)
+    ) as pool:
+        bm25_results = list(pool.imap(bm25_worker, test_claims, chunksize=20))
+    print("BM25 retrieval done.")
+    return bm25_results
 
 
 def main(n_jobs=10, topk=10):
@@ -53,18 +69,14 @@ def main(n_jobs=10, topk=10):
     documents = [doc.page_content for doc in doc_objs]
     doc_ids = [doc.metadata["id"] for doc in doc_objs]
     bm25_index_path = "data/bm25_index.pkl"
-    with open(bm25_index_path, "rb") as f:
-        bm25 = pickle.load(f)
-
     # --- Load claims/test set ---
     test_claims = load_claims("data/test.jsonl", exclude_nei=True)[:20]
     print(f"Loaded {len(test_claims)} claims from test.jsonl.")
 
     # Multiprocessing pool
-    with Pool(
-        n_jobs, initializer=init_worker, initargs=(bm25, doc_ids, documents, topk)
-    ) as pool:
-        results = list(pool.imap(bm25_worker, test_claims, chunksize=20))
+    results = multi_process_bm25_module(
+        test_claims, n_jobs, "indexes/bm25_index.pkl", doc_ids, documents, topk
+    )
     # Prepare per-n cutoff score collectors
     bm25_scores_at_n = {n: {"ndcg": [], "hit": []} for n in cutoff_list}
 

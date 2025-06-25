@@ -11,12 +11,6 @@ from retrievers.Qwen3EmbeddingRetriever import Qwen3EmbeddingRetriever
 from scripts.run_bm25_eval import bm25_worker, init_worker
 from utils.data_utils import load_claims, load_pickle_documents
 
-# ========== Multiprocessing BM25 setup ==========
-bm25_global = None
-doc_ids_global = None
-corpus_global = None
-topk_global = None
-
 
 def doc_dense_worker(example, retriever, topk=10):
     claim_text = example["claim"]
@@ -40,7 +34,6 @@ def doc_dense_worker(example, retriever, topk=10):
     }
 
 
-# TODO
 def line_dense_worker(example, retriever, candidates=[], topk=10):
     claim_text = example["claim"]
     gold_evidence = example["evidence"]
@@ -67,8 +60,6 @@ def line_dense_worker(example, retriever, candidates=[], topk=10):
         for span in group
         if len(span) >= 4 and span[2] is not None and span[3] is not None
     )
-    # For ndcg: you can score by simply counting hits in gold_pairs, or adjust as needed
-    # Here, as a simple version: treat as a ranking, 1 if found, 0 if not
     pred_scores = [1 if pair in gold_pairs else 0 for pair in pred_doc_line_pairs]
     ndcg = sum(pred_scores) / min(len(gold_pairs), topk) if gold_pairs else 0
     # Strict hit: at least one group is fully covered
@@ -139,9 +130,7 @@ def doc_retrieval_eval(mode="bm25", n_jobs=10, topk=10):
 
         dense_results = []
         for example in tqdm(test_claims):
-            dense_results.append(
-                doc_dense_worker(example, retriever, batch_size=32, topk=topk)
-            )
+            dense_results.append(doc_dense_worker(example, retriever, topk=topk))
         if mode == "dense":
             results = dense_results
 
@@ -189,7 +178,6 @@ def doc_retrieval_eval(mode="bm25", n_jobs=10, topk=10):
     show_retrieval_metrics(cutoff_list, scores_at_n, tag=mode)
 
 
-# TODO
 def sentence_retrieval_eval(topk=10):
     doc_objs = load_pickle_documents("data/sentence_level_docs.pkl")
     test_claims = load_claims("data/test.jsonl", exclude_nei=True)

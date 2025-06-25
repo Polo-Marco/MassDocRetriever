@@ -62,7 +62,7 @@ User Statement
 
 ### 4. **Sentence Retrieval Evaluation**
    - [X] Prepare gold standard (statements with relevant key sentences labeled)
-   - [ ] Compute Evaluation for sentence retrieval
+   - [X] Compute Evaluation for sentence retrieval
 
 ### 5. **Sentence Classification Pipeline**
    - [ ] Implement rule-based classifier (supportive/non-supportive/neutral)
@@ -130,8 +130,9 @@ User Statement
 - [X] Day 1: Project initialization, README, pipeline design
 - [x] Day 2: Qwen Retriever implementation, evaluation
 - [x] Day 3: Qwen Reranker and modular evaluation (Retriever+Reranker). Qwen Retriever with FAISS vector database. Set pre-commit.
-- [x] Day 4: Finish Sentence Retrieval, Adjust retriever for better modularity.
-- [ ] Day 5: Optimize code with DeepSeed support, Sentence Retrieval Evaluation and Sentence Reranker
+- [x] Day 4: Finish Line Retrieval pipeline, Adjust retriever for better modularity.
+- [x] Day 5: Line Retrieval Evaluation and adjust modular evaluation for better cumstomization.
+- [ ] Day 6: Finish Full Document/Line retrieval, reranker pipeline and their evaluation.
 
 ---
 
