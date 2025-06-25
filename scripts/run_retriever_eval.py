@@ -5,7 +5,8 @@ from multiprocessing import Pool
 from tqdm import tqdm
 
 from evaluation.eval_metrics import compute_ndcg_at_k
-from evaluation.eval_utils import evidence_match, show_retrieval_metrics
+from evaluation.eval_utils import (evidence_line_match, evidence_match,
+                                   show_retrieval_metrics)
 from retrievers.Qwen3EmbeddingRetriever import Qwen3EmbeddingRetriever
 from scripts.run_bm25_eval import bm25_worker, init_worker
 from utils.data_utils import load_claims, load_pickle_documents
@@ -37,23 +38,45 @@ def doc_dense_worker(example, retriever, topk=10):
         "ndcg": ndcg,
         "hit": hit,
     }
-#TODO
-def line_dense_worker(example, retriever, topk=10):
+
+
+# TODO
+def line_dense_worker(example, retriever, candidates=[], topk=10):
     claim_text = example["claim"]
     gold_evidence = example["evidence"]
-    gold_doc_ids = set()
-    for group in gold_evidence:
-        for item in group:
-            if item and len(item) >= 3 and item[2] is not None:
-                gold_doc_ids.add(str(item[2]))
-    top_docs = retriever.retrieve(claim_text, k=topk)
-    pred_doc_ids = [str(doc["doc_id"]) for doc in top_docs]
-    ndcg = compute_ndcg_at_k(pred_doc_ids, gold_doc_ids, k=topk)
-    hit = int(evidence_match(pred_doc_ids, gold_evidence))
+    if not candidates:  # use gold doc id for eval
+        candidates = []
+        for group in gold_evidence:
+            for item in group:
+                if item and len(item) >= 3 and item[2] is not None:
+                    candidates.append(str(item[2]))
+    # Retrieve sentences (lines)
+    top_lines = retriever.retrieve_sentence(
+        claim_text, candidates, k=topk
+    )  # Should return list of dicts
+    # Prepare predicted pairs (as string)
+    pred_doc_line_pairs = [
+        (str(item["doc_id"]), str(item["line_id"]))
+        for item in top_lines
+        if "doc_id" in item and "line_id" in item
+    ]
+    # Prepare gold (doc_id, line_id) pairs for ndcg if needed (could be extended)
+    gold_pairs = set(
+        (str(span[2]), str(span[3]))
+        for group in gold_evidence
+        for span in group
+        if len(span) >= 4 and span[2] is not None and span[3] is not None
+    )
+    # For ndcg: you can score by simply counting hits in gold_pairs, or adjust as needed
+    # Here, as a simple version: treat as a ranking, 1 if found, 0 if not
+    pred_scores = [1 if pair in gold_pairs else 0 for pair in pred_doc_line_pairs]
+    ndcg = sum(pred_scores) / min(len(gold_pairs), topk) if gold_pairs else 0
+    # Strict hit: at least one group is fully covered
+    hit = int(evidence_line_match(pred_doc_line_pairs, gold_evidence))
     return {
         "claim": claim_text,
-        "dense_docs": top_docs,
-        "gold_doc_ids": list(gold_doc_ids),
+        "dense_lines": top_lines,
+        "gold_pairs": list(gold_pairs),
         "evidence": gold_evidence,
         "ndcg": ndcg,
         "hit": hit,
@@ -113,7 +136,7 @@ def doc_retrieval_eval(mode="bm25", n_jobs=10, topk=10):
         )
         retriever.load_model()
         retriever.load_index()
-        
+
         dense_results = []
         for example in tqdm(test_claims):
             dense_results.append(
@@ -164,12 +187,57 @@ def doc_retrieval_eval(mode="bm25", n_jobs=10, topk=10):
                 int(evidence_match(pred_doc_ids, gold_evidence))
             )
     show_retrieval_metrics(cutoff_list, scores_at_n, tag=mode)
+
+
 # TODO
-def sentence_retrieval_eval():
-    return None
-    
+def sentence_retrieval_eval(topk=10):
+    doc_objs = load_pickle_documents("data/sentence_level_docs.pkl")
+    test_claims = load_claims("data/test.jsonl", exclude_nei=True)
+    print(f"Loaded {len(test_claims)} claims from test.jsonl.")
+    retriever = Qwen3EmbeddingRetriever(  # Qwen3EmbeddingRetriever STEmbeddingRetriever
+        model_name="Qwen/Qwen3-Embedding-0.6B",
+        documents=doc_objs,
+        batch_size=128,
+        max_length=256,
+        use_gpu=True,
+    )
+    retriever.load_model()
+
+    dense_results = []
+    for example in tqdm(test_claims):
+        dense_results.append(line_dense_worker(example, retriever, topk=topk))
+    # prepare result for metrics
+    cutoff_list = [1, 5, 10, 20, 50]
+    scores_at_n = {n: {"ndcg": [], "hit": []} for n in cutoff_list}
+
+    for ex in dense_results:
+        dense_lines = ex["dense_lines"]  # List of dicts from retrieve_sentence
+        gold_pairs = set(ex["gold_pairs"])
+        evidence = ex["evidence"]
+        # Prepare predicted (doc_id, line_id) pairs
+        pred_pairs = [
+            (str(item["doc_id"]), str(item["line_id"])) for item in dense_lines
+        ]
+        # print(pred_pairs)
+        for n in cutoff_list:
+            preds_n = pred_pairs[:n]
+            # NDCG: how many of top n are gold? (simplified for binary relevance)
+            ndcg_n = (
+                sum((pair in gold_pairs) for pair in preds_n) / min(len(gold_pairs), n)
+                if gold_pairs
+                else 0
+            )
+            # Hit: does any gold group fully match?
+            hit_n = int(evidence_line_match(preds_n, evidence))
+            scores_at_n[n]["ndcg"].append(ndcg_n)
+            scores_at_n[n]["hit"].append(hit_n)
+    show_retrieval_metrics(cutoff_list, scores_at_n, tag="Line Dense")
+
 
 if __name__ == "__main__":
-    import sys
-    mode = sys.argv[1] if len(sys.argv) > 1 else "bm25"
-    doc_retrieval_eval(mode=mode, n_jobs=20, topk=100)
+    # doc eval
+    # import sys
+    # mode = sys.argv[1] if len(sys.argv) > 1 else "bm25"
+    # doc_retrieval_eval(mode=mode, n_jobs=20, topk=100)
+    # line eval
+    sentence_retrieval_eval()

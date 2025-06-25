@@ -61,8 +61,8 @@ User Statement
    - [X] (Optional) Experiment with LLM-based sentence scoring
 
 ### 4. **Sentence Retrieval Evaluation**
-   - [ ] Prepare gold standard (statements with relevant key sentences labeled)
-   - [ ] Compute F1 for sentence retrieval
+   - [X] Prepare gold standard (statements with relevant key sentences labeled)
+   - [ ] Compute Evaluation for sentence retrieval
 
 ### 5. **Sentence Classification Pipeline**
    - [ ] Implement rule-based classifier (supportive/non-supportive/neutral)
