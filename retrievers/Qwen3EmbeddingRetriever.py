@@ -281,52 +281,52 @@ class Qwen3EmbeddingRetriever:
 
 if __name__ == "__main__":
     # doc retrieval
-#     import sys
+    #     import sys
 
-#     batch_size = int(sys.argv[1]) if len(sys.argv) > 1 else "bm25"
-#     max_length = int(sys.argv[2]) if len(sys.argv) > 1 else "bm25"
-#     # Building index (first time)
-#     doc_objs = load_pickle_documents("data/doc_level_docs.pkl")
-#     documents = [doc.page_content for doc in doc_objs]
-#     doc_ids = [doc.metadata["id"] for doc in doc_objs]
-#     # Qwen/Qwen3-Embedding-0.6B
-#     model_name = "Qwen/Qwen3-Embedding-4B"
-#     emb_path = f"./embeddings/qwen3_4b_{max_length}.emb.npy"
-#     index_path = f"./indexes/qwen3_4b_{max_length}_index.faiss"
-#     retriever = Qwen3EmbeddingRetriever(
-#         model_name=model_name,
-#         documents=doc_objs,
-#         doc_ids=doc_ids,
-#         index_path=index_path,
-#         emb_path=emb_path,
-#         batch_size=batch_size,
-#         use_gpu=True,
-#         max_length=max_length,
-#     )
-#     retriever.build_index_and_emb(chunk_size=10000)
-#     retriever.load_model()
-#     retriever.load_index()
+    #     batch_size = int(sys.argv[1]) if len(sys.argv) > 1 else "bm25"
+    #     max_length = int(sys.argv[2]) if len(sys.argv) > 1 else "bm25"
+    #     # Building index (first time)
+    #     doc_objs = load_pickle_documents("data/doc_level_docs.pkl")
+    #     documents = [doc.page_content for doc in doc_objs]
+    #     doc_ids = [doc.metadata["id"] for doc in doc_objs]
+    #     # Qwen/Qwen3-Embedding-0.6B
+    #     model_name = "Qwen/Qwen3-Embedding-4B"
+    #     emb_path = f"./embeddings/qwen3_4b_{max_length}.emb.npy"
+    #     index_path = f"./indexes/qwen3_4b_{max_length}_index.faiss"
+    #     retriever = Qwen3EmbeddingRetriever(
+    #         model_name=model_name,
+    #         documents=doc_objs,
+    #         doc_ids=doc_ids,
+    #         index_path=index_path,
+    #         emb_path=emb_path,
+    #         batch_size=batch_size,
+    #         use_gpu=True,
+    #         max_length=max_length,
+    #     )
+    #     retriever.build_index_and_emb(chunk_size=10000)
+    #     retriever.load_model()
+    #     retriever.load_index()
 
-#     # Retrieval
-#     results = retriever.retrieve("天衛三軌道在天王星內部的磁層", k=10)
-#     for r in results:
-#         print(r["doc_id"], r["score"])
+    #     # Retrieval
+    #     results = retriever.retrieve("天衛三軌道在天王星內部的磁層", k=10)
+    #     for r in results:
+    #         print(r["doc_id"], r["score"])
 
     # sentence retrieval
     print("loading sentence dataset")
     sent_objs = load_pickle_documents("data/sentence_level_docs.pkl")
     print("sentence dataset loaded")
-    model_name="Qwen/Qwen3-Embedding-0.6B"
+    model_name = "Qwen/Qwen3-Embedding-0.6B"
     retriever = Qwen3EmbeddingRetriever(
-        model_name = model_name,
+        model_name=model_name,
         documents=sent_objs,
         batch_size=16,
         use_gpu=True,
-        max_length=256
+        max_length=256,
     )
     retriever.load_model()
-    query = '一行出家衆出家前的名字爲張遂.'
-    candidate_list= ['一行','比丘']
-    results = retriever.retrieve_sentence(query,candidate_list)
+    query = "一行出家衆出家前的名字爲張遂."
+    candidate_list = ["一行", "比丘"]
+    results = retriever.retrieve_sentence(query, candidate_list)
     for r in results:
-        print(r["doc_id"],r[ "line_id"],r["score"])
+        print(r["doc_id"], r["line_id"], r["score"])
