@@ -132,7 +132,7 @@ User Statement
 - [x] Day 3: Qwen Reranker and modular evaluation (Retriever+Reranker). Qwen Retriever with FAISS vector database. Set pre-commit.
 - [x] Day 4: Finish Line Retrieval pipeline, Adjust retriever for better modularity.
 - [x] Day 5: Line Retrieval Evaluation and adjust modular evaluation for better cumstomization.
-- [ ] Day 6: Finish Full Document/Line retrieval, reranker pipeline and their evaluation.
+- [x] Day 6: Finish Full Document/Line retrieval, reranker pipeline and their evaluation.
 
 ---
 
