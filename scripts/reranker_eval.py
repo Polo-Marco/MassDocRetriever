@@ -3,22 +3,28 @@ from tqdm import tqdm
 
 from evaluation.eval_metrics import compute_ndcg_at_k
 from evaluation.eval_utils import evidence_line_match, evidence_match
+from scripts.run_retriever_eval import NEI_doc_return, NEI_line_return
 
 
 def doc_reranker_worker(example, reranker, candidates, topk=10):
     claim_text = example["claim"]
     gold_evidence = example["evidence"]
+    label = example["label"]
     gold_doc_ids = set()
+    top_docs = reranker.rerank(claim_text, candidates, topk=topk)
+    if label.upper() == "NOT ENOUGH INFO":
+        # NEI case: no golds, so just return dummy values
+        return NEI_doc_return(claim_text, label, top_docs, gold_evidence)
     for group in gold_evidence:
         for item in group:
             if item and len(item) >= 3 and item[2] is not None:
                 gold_doc_ids.add(str(item[2]))
-    top_docs = reranker.rerank(claim_text, candidates, topk=topk)
     pred_doc_ids = [str(doc["doc_id"]) for doc in top_docs]
     ndcg = compute_ndcg_at_k(pred_doc_ids, gold_doc_ids, k=topk)
     hit = int(evidence_match(pred_doc_ids, gold_evidence))
     return {
         "claim": claim_text,
+        "label": example["label"],
         "dense_docs": top_docs,
         "gold_doc_ids": list(gold_doc_ids),
         "evidence": gold_evidence,
@@ -30,6 +36,7 @@ def doc_reranker_worker(example, reranker, candidates, topk=10):
 def line_reranker_worker(example, retriever, candidates=[], topk=10):
     claim_text = example["claim"]
     gold_evidence = example["evidence"]
+    label = example["label"]
     if not candidates:  # use gold doc id for eval
         candidates = []
         for group in gold_evidence:
@@ -37,9 +44,10 @@ def line_reranker_worker(example, retriever, candidates=[], topk=10):
                 if item and len(item) >= 3 and item[2] is not None:
                     candidates.append(str(item[2]))
     # Retrieve sentences (lines)
-    top_lines = retriever.rerank(
-        claim_text, candidates, topk=topk
-    )  # Should return list of dicts
+    top_lines = retriever.rerank(claim_text, candidates, topk=topk)
+    if label.upper() == "NOT ENOUGH INFO":
+        # NEI case: no golds, so just return dummy values
+        return NEI_line_return(claim_text, label, top_lines, gold_evidence)
     # Prepare predicted pairs (as string)
     pred_doc_line_pairs = [
         (str(item["doc_id"]), str(item["line_id"]))
@@ -59,6 +67,7 @@ def line_reranker_worker(example, retriever, candidates=[], topk=10):
     hit = int(evidence_line_match(pred_doc_line_pairs, gold_evidence))
     return {
         "claim": claim_text,
+        "label": example["label"],
         "dense_lines": top_lines,
         "gold_pairs": list(gold_pairs),
         "evidence": gold_evidence,
@@ -84,5 +93,5 @@ def rerank_module(examples, reranker, tag_name="bm25", mode="doc", topk=5):
                     candidates=example[f"{tag_name}_lines"],
                     topk=topk,
                 )
-            )  #
+            )
     return results

@@ -32,6 +32,8 @@ def dense_retrieval_module(examples, retriever, topk=5, mode="doc", tag_name="de
 def gather_doc_results(cutoff_list, results, tag_name="bm25"):
     scores_at_n = {n: {"ndcg": [], "hit": []} for n in cutoff_list}
     for ex in tqdm(results):
+        if ex["label"].upper() == "NOT ENOUGH INFO":
+            continue
         gold_doc_ids = set(ex["gold_doc_ids"])
         gold_evidence = ex["evidence"]
         retr_docs = ex[f"{tag_name}_docs"]
@@ -50,6 +52,8 @@ def gather_doc_results(cutoff_list, results, tag_name="bm25"):
 def gather_line_results(cutoff_list, results, tag_name="dense"):
     scores_at_n = {n: {"ndcg": [], "hit": []} for n in cutoff_list}
     for ex in results:
+        if ex["label"].upper() == "NOT ENOUGH INFO":
+            continue
         lines = ex[f"{tag_name}_lines"]  # List of dicts from retrieve_sentence
         gold_pairs = set(ex["gold_pairs"])
         evidence = ex["evidence"]
@@ -85,7 +89,7 @@ def modular_eval(
     doc_objs = load_pickle_documents(docs_path)
     doc_ids = [doc.metadata["id"] for doc in doc_objs]
     # Load claims
-    test_claims = load_claims(claims_path, exclude_nei=True)[:1]
+    test_claims = load_claims(claims_path, exclude_nei=False)[:20]
     print(f"Loaded {len(test_claims)} claims from {claims_path}")
     # Do doc retrieval
     # retr_results = multi_process_bm25_module(
@@ -161,6 +165,7 @@ def modular_eval(
     line_reranker.cleanup()
     del line_reranker
     print(line_rerank_results)
+    exit()
     # Save result
     # Save as JSON for compatibility (you can also use pickle for Python-native saving, but JSON is human-readable)
     # if json_save_path:

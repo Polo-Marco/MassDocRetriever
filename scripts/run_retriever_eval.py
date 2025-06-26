@@ -12,20 +12,37 @@ from scripts.run_bm25_eval import bm25_worker, init_worker
 from utils.data_utils import load_claims, load_pickle_documents
 
 
-def doc_dense_worker(example, retriever, topk=10):
+def NEI_doc_return(claim_text, label, top_docs, gold_evidence):
+    return {
+        "claim": claim_text,
+        "label": label,
+        "dense_docs": top_docs,
+        "gold_doc_ids": [],
+        "evidence": gold_evidence,
+        "ndcg": 0.0,  # or you could use None
+        "hit": 0,
+    }
+
+
+def doc_dense_worker(example, model, topk=10):
     claim_text = example["claim"]
     gold_evidence = example["evidence"]
     gold_doc_ids = set()
+    label = example["label"]
+    top_docs = model.retrieve(claim_text, k=topk)
+    if label.upper() == "NOT ENOUGH INFO":
+        # NEI case: no golds, so just return dummy values
+        return NEI_doc_return(claim_text, label, top_docs, gold_evidence)
     for group in gold_evidence:
         for item in group:
             if item and len(item) >= 3 and item[2] is not None:
                 gold_doc_ids.add(str(item[2]))
-    top_docs = retriever.retrieve(claim_text, k=topk)
     pred_doc_ids = [str(doc["doc_id"]) for doc in top_docs]
     ndcg = compute_ndcg_at_k(pred_doc_ids, gold_doc_ids, k=topk)
     hit = int(evidence_match(pred_doc_ids, gold_evidence))
     return {
         "claim": claim_text,
+        "label": label,
         "dense_docs": top_docs,
         "gold_doc_ids": list(gold_doc_ids),
         "evidence": gold_evidence,
@@ -34,9 +51,22 @@ def doc_dense_worker(example, retriever, topk=10):
     }
 
 
-def line_dense_worker(example, retriever, candidates=[], topk=10):
+def NEI_line_return(claim_text, label, top_lines, gold_evidence):
+    return {
+        "claim": claim_text,
+        "label": label,
+        "dense_lines": top_lines,
+        "gold_pairs": [],
+        "evidence": gold_evidence,
+        "ndcg": 0,
+        "hit": 0,
+    }
+
+
+def line_dense_worker(example, model, candidates=[], topk=10):
     claim_text = example["claim"]
     gold_evidence = example["evidence"]
+    label = example["label"]
     if not candidates:  # use gold doc id for eval
         candidates = []
         for group in gold_evidence:
@@ -44,9 +74,10 @@ def line_dense_worker(example, retriever, candidates=[], topk=10):
                 if item and len(item) >= 3 and item[2] is not None:
                     candidates.append(str(item[2]))
     # Retrieve sentences (lines)
-    top_lines = retriever.retrieve_sentence(
-        claim_text, candidates, k=topk
-    )  # Should return list of dicts
+    top_lines = model.retrieve_sentence(claim_text, candidates, k=topk)
+    if label.upper() == "NOT ENOUGH INFO":
+        # NEI case: no golds, so just return dummy values
+        return NEI_line_return(claim_text, label, top_lines, gold_evidence)
     # Prepare predicted pairs (as string)
     pred_doc_line_pairs = [
         (str(item["doc_id"]), str(item["line_id"]))
@@ -66,6 +97,7 @@ def line_dense_worker(example, retriever, candidates=[], topk=10):
     hit = int(evidence_line_match(pred_doc_line_pairs, gold_evidence))
     return {
         "claim": claim_text,
+        "label": label,
         "dense_lines": top_lines,
         "gold_pairs": list(gold_pairs),
         "evidence": gold_evidence,
