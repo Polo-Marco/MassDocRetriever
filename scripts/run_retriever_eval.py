@@ -123,6 +123,8 @@ def doc_retrieval_eval(mode="bm25", n_jobs=10, topk=10):
                 doc_ids=doc_ids,
                 index_path="./indexes/qwen3_06b_1024_index.faiss",
                 emb_path="./embeddings/qwen3_06b_1024.emb.npy",
+                batch_size=64,
+                max_length=1024,
             )
         )
         retriever.load_model()
@@ -224,8 +226,9 @@ def sentence_retrieval_eval(topk=10):
 
 if __name__ == "__main__":
     # doc eval
-    # import sys
-    # mode = sys.argv[1] if len(sys.argv) > 1 else "bm25"
-    # doc_retrieval_eval(mode=mode, n_jobs=20, topk=100)
+    import sys
+
+    mode = sys.argv[1] if len(sys.argv) > 1 else "bm25"
+    doc_retrieval_eval(mode=mode, n_jobs=20, topk=100)
     # line eval
-    sentence_retrieval_eval()
+    # sentence_retrieval_eval()

@@ -58,6 +58,7 @@ class Qwen3EmbeddingRetriever:
         self.emb_path = emb_path or (
             index_path.replace(".faiss", ".emb.npy") if index_path else None
         )
+        self.doc_ids = doc_ids
         self.index = None
         self.embeddings = None
         # initialize model with cpu
@@ -180,7 +181,7 @@ class Qwen3EmbeddingRetriever:
         print(f"Loading FAISS index from {self.index_path} ...")
         # load embedding dimention with test embedding
         test_emb = self.model.encode(
-            [self.corpus[0]],
+            [""],
             batch_size=1,
             max_length=self.max_length,
             normalize_embeddings=True,
@@ -201,7 +202,27 @@ class Qwen3EmbeddingRetriever:
             self.index = faiss.index_cpu_to_gpu(res, 0, self.index)
         print("Index and embbedding loaded")
 
-    def retrieve(self, doc_ids, query, k=5):
+    def cleanup(self):
+        """
+        Safely release model (and tokenizer) from GPU/CPU memory.
+        Call this when done with the instance.
+        """
+        try:
+            if hasattr(self, "model") and self.model is not None:
+                if hasattr(self.model, "cpu"):
+                    self.model.cpu()  # Move to CPU first (helps free GPU instantly)
+                del self.model
+                self.model = None
+            if hasattr(self, "tokenizer"):
+                del self.tokenizer
+                self.tokenizer = None
+        except Exception as e:
+            print(f"[WARN] Exception during cleanup: {e}")
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    def retrieve(self, query, k=5):
         # Embed the query
         query_emb = self.model.encode(
             [query],
@@ -215,11 +236,11 @@ class Qwen3EmbeddingRetriever:
         D = D[0]
         results = []
         for rank, idx in enumerate(I):
-            if idx == -1 or idx >= len(doc_ids):
+            if idx == -1 or idx >= len(self.doc_ids):
                 continue
             results.append(
                 {
-                    "doc_id": doc_ids[idx],
+                    "doc_id": self.doc_ids[idx],
                     "score": float(D[rank]),
                     "text": self.corpus[idx],
                 }
@@ -281,52 +302,52 @@ class Qwen3EmbeddingRetriever:
 
 if __name__ == "__main__":
     # doc retrieval
-    #     import sys
+    import sys
 
-    #     batch_size = int(sys.argv[1]) if len(sys.argv) > 1 else "bm25"
-    #     max_length = int(sys.argv[2]) if len(sys.argv) > 1 else "bm25"
-    #     # Building index (first time)
-    #     doc_objs = load_pickle_documents("data/doc_level_docs.pkl")
-    #     documents = [doc.page_content for doc in doc_objs]
-    #     doc_ids = [doc.metadata["id"] for doc in doc_objs]
-    #     # Qwen/Qwen3-Embedding-0.6B
-    #     model_name = "Qwen/Qwen3-Embedding-4B"
-    #     emb_path = f"./embeddings/qwen3_4b_{max_length}.emb.npy"
-    #     index_path = f"./indexes/qwen3_4b_{max_length}_index.faiss"
-    #     retriever = Qwen3EmbeddingRetriever(
-    #         model_name=model_name,
-    #         documents=doc_objs,
-    #         doc_ids=doc_ids,
-    #         index_path=index_path,
-    #         emb_path=emb_path,
-    #         batch_size=batch_size,
-    #         use_gpu=True,
-    #         max_length=max_length,
-    #     )
-    #     retriever.build_index_and_emb(chunk_size=10000)
-    #     retriever.load_model()
-    #     retriever.load_index()
-
-    #     # Retrieval
-    #     results = retriever.retrieve("天衛三軌道在天王星內部的磁層", k=10)
-    #     for r in results:
-    #         print(r["doc_id"], r["score"])
-
-    # sentence retrieval
-    print("loading sentence dataset")
-    sent_objs = load_pickle_documents("data/sentence_level_docs.pkl")
-    print("sentence dataset loaded")
-    model_name = "Qwen/Qwen3-Embedding-0.6B"
+    batch_size = int(sys.argv[1]) if len(sys.argv) > 1 else "bm25"
+    max_length = int(sys.argv[2]) if len(sys.argv) > 1 else "bm25"
+    # Building index (first time)
+    doc_objs = load_pickle_documents("data/doc_level_docs.pkl")
+    documents = [doc.page_content for doc in doc_objs]
+    doc_ids = [doc.metadata["id"] for doc in doc_objs]
+    # Qwen/Qwen3-Embedding-0.6B
+    model_name = "Qwen/Qwen3-Embedding-4B"
+    emb_path = f"./embeddings/qwen3_4b_{max_length}.emb.npy"
+    index_path = f"./indexes/qwen3_4b_{max_length}_index.faiss"
     retriever = Qwen3EmbeddingRetriever(
         model_name=model_name,
-        documents=sent_objs,
-        batch_size=16,
+        documents=doc_objs,
+        doc_ids=doc_ids,
+        index_path=index_path,
+        emb_path=emb_path,
+        batch_size=batch_size,
         use_gpu=True,
-        max_length=256,
+        max_length=max_length,
     )
+    # retriever.build_index_and_emb(chunk_size=10000)
     retriever.load_model()
-    query = "一行出家衆出家前的名字爲張遂."
-    candidate_list = ["一行", "比丘"]
-    results = retriever.retrieve_sentence(query, candidate_list)
+    retriever.load_index()
+
+    # Retrieval
+    results = retriever.retrieve("天衛三軌道在天王星內部的磁層", k=10)
     for r in results:
-        print(r["doc_id"], r["line_id"], r["score"])
+        print(r["doc_id"], r["score"])
+
+# sentence retrieval
+# print("loading sentence dataset")
+# sent_objs = load_pickle_documents("data/sentence_level_docs.pkl")
+# print("sentence dataset loaded")
+# model_name = "Qwen/Qwen3-Embedding-0.6B"
+# retriever = Qwen3EmbeddingRetriever(
+#     model_name=model_name,
+#     documents=sent_objs,
+#     batch_size=16,
+#     use_gpu=True,
+#     max_length=256,
+# )
+# retriever.load_model()
+# query = "一行出家衆出家前的名字爲張遂."
+# candidate_list = ["一行", "比丘"]
+# results = retriever.retrieve_sentence(query, candidate_list)
+# for r in results:
+#     print(r["doc_id"], r["line_id"], r["score"])

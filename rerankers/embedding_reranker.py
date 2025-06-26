@@ -1,5 +1,7 @@
 # rerankers/embedding_reranker.py
 # qwen3 text embedding
+import gc
+
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -82,6 +84,26 @@ class Qwen3Reranker:
         batch_scores = torch.nn.functional.log_softmax(batch_scores, dim=1)
         scores = batch_scores[:, 1].exp().tolist()
         return scores
+
+    def cleanup(self):
+        """
+        Safely release model (and tokenizer) from GPU/CPU memory.
+        Call this when done with the instance.
+        """
+        try:
+            if hasattr(self, "model") and self.model is not None:
+                if hasattr(self.model, "cpu"):
+                    self.model.cpu()  # Move to CPU first (helps free GPU instantly)
+                del self.model
+                self.model = None
+            if hasattr(self, "tokenizer"):
+                del self.tokenizer
+                self.tokenizer = None
+        except Exception as e:
+            print(f"[WARN] Exception during cleanup: {e}")
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     def rerank(self, claim, candidate_docs, topk=5):
         # claim: str; candidate_docs: list of {"doc_id", "score", "text"}

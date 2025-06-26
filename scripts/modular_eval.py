@@ -1,5 +1,4 @@
 import json
-import pickle
 from multiprocessing import Pool
 
 from tqdm import tqdm
@@ -33,7 +32,6 @@ def dense_retrieval_module(examples, retriever, topk=5, mode="doc", tag_name="de
 def gather_doc_results(cutoff_list, results, tag_name="bm25"):
     scores_at_n = {n: {"ndcg": [], "hit": []} for n in cutoff_list}
     for ex in tqdm(results):
-        claim = ex["claim"]
         gold_doc_ids = set(ex["gold_doc_ids"])
         gold_evidence = ex["evidence"]
         retr_docs = ex[f"{tag_name}_docs"]
@@ -83,31 +81,48 @@ def modular_eval(
     cutoff_list=[1, 5, 10, 15],
     json_save_path="retrieval_eval_results.json",
 ):
-    retr_name = "dense"
     # Load docs
     doc_objs = load_pickle_documents(docs_path)
-    documents = [doc.page_content for doc in doc_objs]
     doc_ids = [doc.metadata["id"] for doc in doc_objs]
     # Load claims
-    test_claims = load_claims(claims_path, exclude_nei=True)
+    test_claims = load_claims(claims_path, exclude_nei=True)[:1]
     print(f"Loaded {len(test_claims)} claims from {claims_path}")
     # Do doc retrieval
-    retr_results = multi_process_bm25_module(
-        test_claims, "indexes/bm25_index.pkl", doc_ids, documents, n_jobs, topk=15
+    # retr_results = multi_process_bm25_module(
+    #     test_claims, "indexes/bm25_index.pkl", doc_ids, documents, n_jobs, topk=15
+    # )
+    retriever = Qwen3EmbeddingRetriever(  # Qwen3EmbeddingRetriever STEmbeddingRetriever
+        model_name="Qwen/Qwen3-Embedding-0.6B",
+        documents=doc_objs,
+        doc_ids=doc_ids,
+        index_path="./indexes/qwen3_06b_512_index.faiss",
+        emb_path="./embeddings/qwen3_06b_512.emb.npy",
+        batch_size=64,
+        max_length=512,
     )
+    retriever.load_model()
+    retriever.load_index()
+    retr_results = []
+    for example in tqdm(test_claims):
+        retr_results.append(doc_dense_worker(example, retriever, topk=topk))
     retriever_scores_at_n = gather_doc_results(
-        cutoff_list, retr_results, tag_name="bm25"
+        cutoff_list, retr_results, tag_name="dense"
     )
     show_retrieval_metrics(cutoff_list, retriever_scores_at_n, tag="retriever")
+    retriever.cleanup()
+    del retriever
     # Do doc Reranker
     reranker = Qwen3Reranker(model_name="Qwen/Qwen3-Reranker-0.6B", batch_size=32)
-    rerank_results = rerank_module(retr_results, reranker, mode="doc", topk=15)
+    rerank_results = rerank_module(
+        retr_results, reranker, tag_name="dense", mode="doc", topk=5
+    )
     # Prepare per-n cutoff score collectors
     rerank_scores_at_n = gather_doc_results(
         cutoff_list, rerank_results, tag_name="dense"
     )
+    reranker.cleanup()
+    del reranker
     show_retrieval_metrics(cutoff_list, rerank_scores_at_n, tag="reranker")
-
     # Do sentence retrieval
     # load sentence level data
     sent_objs = load_pickle_documents(sent_path)
@@ -127,26 +142,37 @@ def modular_eval(
         cutoff_list, line_retrieve_results, tag_name="dense"
     )
     show_retrieval_metrics(
-        cutoff_list, line_retriever_scores_at_n, tag="line_retriever"
+        cutoff_list, line_retriever_scores_at_n, tag="line retriever"
     )
-    exit()
-
-    # dense_retrieval_module
-    # Results
-    # ==== Print Table ====
-    show_retrieval_metrics(cutoff_list, rerank_scores_at_n, tag="reranker")
+    line_retriever.cleanup()
+    del line_retriever
+    line_reranker = Qwen3Reranker(
+        model_name="Qwen/Qwen3-Reranker-0.6B", batch_size=32, max_length=256
+    )
+    # do sentence reranker
+    line_rerank_results = rerank_module(
+        line_retrieve_results, line_reranker, tag_name="dense", mode="line", topk=5
+    )
+    # Prepare per-n cutoff score collectors
+    line_rerank_scores_at_n = gather_line_results(
+        cutoff_list, line_rerank_results, tag_name="dense"
+    )
+    show_retrieval_metrics(cutoff_list, line_rerank_scores_at_n, tag="line reranker")
+    line_reranker.cleanup()
+    del line_reranker
+    print(line_rerank_results)
     # Save result
     # Save as JSON for compatibility (you can also use pickle for Python-native saving, but JSON is human-readable)
-    if json_save_path:
-        all_scores = {
-            "cutoff_list": cutoff_list,
-            "retriever_scores_at_n": retriever_scores_at_n,  # dict: n -> {"ndcg": [...], "hit": [...]}
-            "rerank_scores_at_n": rerank_scores_at_n,  # dict: n -> {"ndcg": [...], "hit": [...]}
-        }
-        with open(json_save_path, "w", encoding="utf-8") as f:
-            json.dump(all_scores, f, ensure_ascii=False, indent=2)
-        print(f"\nResults saved to {json_save_path}")
+    # if json_save_path:
+    #     all_scores = {
+    #         "cutoff_list": cutoff_list,
+    #         "retriever_scores_at_n": retriever_scores_at_n,  # dict: n -> {"ndcg": [...], "hit": [...]}
+    #         "rerank_scores_at_n": rerank_scores_at_n,  # dict: n -> {"ndcg": [...], "hit": [...]}
+    #     }
+    #     with open(json_save_path, "w", encoding="utf-8") as f:
+    #         json.dump(all_scores, f, ensure_ascii=False, indent=2)
+    #     print(f"\nResults saved to {json_save_path}")
 
 
 if __name__ == "__main__":
-    modular_eval(n_jobs=20, topk=50, json_save_path=None)
+    modular_eval(n_jobs=20, topk=10, json_save_path=None)

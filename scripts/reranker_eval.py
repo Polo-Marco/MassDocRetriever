@@ -1,8 +1,11 @@
 # scripts/reranker_eval.py
 from tqdm import tqdm
+
 from evaluation.eval_metrics import compute_ndcg_at_k
-from evaluation.eval_utils import evidence_match,evidence_line_match
-def doc_reranker_worker(example,reranker,candidates, topk=10):
+from evaluation.eval_utils import evidence_line_match, evidence_match
+
+
+def doc_reranker_worker(example, reranker, candidates, topk=10):
     claim_text = example["claim"]
     gold_evidence = example["evidence"]
     gold_doc_ids = set()
@@ -10,7 +13,7 @@ def doc_reranker_worker(example,reranker,candidates, topk=10):
         for item in group:
             if item and len(item) >= 3 and item[2] is not None:
                 gold_doc_ids.add(str(item[2]))
-    top_docs = reranker.rerank(claim_text,candidates, topk=topk)
+    top_docs = reranker.rerank(claim_text, candidates, topk=topk)
     pred_doc_ids = [str(doc["doc_id"]) for doc in top_docs]
     ndcg = compute_ndcg_at_k(pred_doc_ids, gold_doc_ids, k=topk)
     hit = int(evidence_match(pred_doc_ids, gold_evidence))
@@ -22,6 +25,8 @@ def doc_reranker_worker(example,reranker,candidates, topk=10):
         "ndcg": ndcg,
         "hit": hit,
     }
+
+
 def line_reranker_worker(example, retriever, candidates=[], topk=10):
     claim_text = example["claim"]
     gold_evidence = example["evidence"]
@@ -60,14 +65,24 @@ def line_reranker_worker(example, retriever, candidates=[], topk=10):
         "ndcg": ndcg,
         "hit": hit,
     }
-def rerank_module(examples,reranker,tag_name = "bm25", mode="doc",topk=5):
+
+
+def rerank_module(examples, reranker, tag_name="bm25", mode="doc", topk=5):
     results = []
     for example in tqdm(examples):
         if mode == "doc":
-            results.append(doc_reranker_worker(example, reranker,
-                                               candidates = example[f'{retr_name}_docs'],topk=topk))
+            results.append(
+                doc_reranker_worker(
+                    example, reranker, candidates=example[f"{tag_name}_docs"], topk=topk
+                )
+            )
         else:
-            candidates = [ex['doc_id'] for ex in example[f'{tag_name}_lines']]
-            results.append(line_reranker_worker(example, reranker,
-                                            candidates = example[f'{retr_name}_lines'],topk=topk))
+            results.append(
+                line_reranker_worker(
+                    example,
+                    reranker,
+                    candidates=example[f"{tag_name}_lines"],
+                    topk=topk,
+                )
+            )  #
     return results
