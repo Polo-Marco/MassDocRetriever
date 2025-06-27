@@ -82,14 +82,14 @@ def modular_eval(
     docs_path="data/doc_level_docs.pkl",
     sent_path="data/sentence_level_docs.pkl",
     claims_path="data/test.jsonl",
-    cutoff_list=[1, 5, 10, 15],
+    cutoff_list=[1, 2, 3, 4, 5, 10, 15],
     json_save_path="retrieval_eval_results.json",
 ):
     # Load docs
     doc_objs = load_pickle_documents(docs_path)
     doc_ids = [doc.metadata["id"] for doc in doc_objs]
     # Load claims
-    test_claims = load_claims(claims_path, exclude_nei=False)[:20]
+    test_claims = load_claims(claims_path, exclude_nei=False)
     print(f"Loaded {len(test_claims)} claims from {claims_path}")
     # Do doc retrieval
     # retr_results = multi_process_bm25_module(
@@ -164,7 +164,6 @@ def modular_eval(
     show_retrieval_metrics(cutoff_list, line_rerank_scores_at_n, tag="line reranker")
     line_reranker.cleanup()
     del line_reranker
-    print(line_rerank_results)
     exit()
     # Save result
     # Save as JSON for compatibility (you can also use pickle for Python-native saving, but JSON is human-readable)
