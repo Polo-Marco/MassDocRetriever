@@ -20,15 +20,21 @@ A modular system for document retrieval, key sentence extraction, and sentence-l
 User Statement
 │
 ├──► Document Retrieval
-│   ├── BM25, Dense, Hybrid → `retrievers/`
-│   └── Evaluation (NDCG@n) → `evaluation/`
+│   ├── BM25, Dense → `retrievers/`
+│   └── Evaluation (NDCG@n) and (Hit@n) → `evaluation/`
+├──► Document Rerank
+│   ├── Dense (Qwen3/Sentence transformer) → `rerankers/`
+│   └── Evaluation (NDCG@n) and (Hit@n) → `evaluation/`
 │
-├──► Sentence Retrieval (from top documents)
-│   ├── Sentence-level extraction → `pipeline.py`, `utils/`
-│   └── Evaluation (F1) → `evaluation/`
+├──► Sentence Retrieval
+│   ├── BM25, Dense → `retrievers/`
+│   └── Evaluation (NDCG@n) and (Hit@n) → `evaluation/`
+├──► Sentence Rerank
+│   ├── Qwen3/Sentence transformer → `rerankers/`
+│   └── Evaluation (NDCG@n) and (Hit@n) → `evaluation/`
 │
 ├──► Sentence Classification
-│   ├── Supportive / Non-supportive / Neutral → `rerankers/`
+│   ├── Supportive / Non-supportive / Neutral 
 │   └── Evaluation (F1) → `evaluation/`
 │
 ├──► (Optional) Search Agent
@@ -66,19 +72,25 @@ User Statement
 
 ### 5. **Sentence Classification Pipeline**
    - [ ] Implement rule-based classifier (supportive/non-supportive/neutral)
-   - [ ] Upgrade to ML/LLM-based classifier (zero-shot or fine-tuned)
-   - [ ] Standardize output: label, confidence, etc.
+   - [x] Upgrade to ML/LLM-based classifier (zero-shot or fine-tuned)
+   - [x] Standardize output: label, confidence, etc.
 
 ### 6. **Sentence Classification Evaluation**
-   - [ ] Prepare gold standard labeled data
-   - [ ] Compute F1, confusion matrix, example outputs
+   - [x] Prepare gold standard labeled data
+   - [x] Compute F1, confusion matrix, example outputs
 
-### 7. **(Optional) Search Agent / Iterative Pipeline**
+### 8. **Fine tuning each stage**
+   - [ ] Document reranker fine tuning (Qwen3, bert-base model)
+   - [ ] Sentence reranker fine tuning (Qwen3, bert-base model)
+   - [ ] Sentence Classification fine tuning (bert-base model)
+   - [ ] Retrieval Augmentated Generation-> better utilization
+   
+### 9. **(Optional) Search Agent / Iterative Pipeline**
    - [ ] Build an agent that checks classification/retrieval confidence
    - [ ] If confidence is low, reformulate query and repeat retrieval/sentence extraction up to N times
    - [ ] Document agent stopping criteria and performance
 
-### 8. **Full Pipeline Evaluation**
+### 10. **Full Pipeline Evaluation**
    - [ ] Define a strict “success”:
         1. Document retrieval hits at least one relevant document
         2. Sentence retrieval finds at least one key sentence
@@ -133,6 +145,8 @@ User Statement
 - [x] Day 4: Finish Line Retrieval pipeline, Adjust retriever for better modularity.
 - [x] Day 5: Line Retrieval Evaluation and adjust modular evaluation for better cumstomization.
 - [x] Day 6: Finish Full Document/Line retrieval, reranker pipeline and their evaluation.
+- [x] Day 7: Finish Qwen3 Reasoner for claim verification and reasoning. Finish its evaluation and made multiple experiments
+= [ ] Day 8: Prepare fine tuning scripts for document retriever and reranker.
 
 ---
 
