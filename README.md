@@ -34,7 +34,7 @@ User Statement
 │   └── Evaluation (NDCG@n) and (Hit@n) → `evaluation/`
 │
 ├──► Sentence Classification
-│   ├── Supportive / Non-supportive / Neutral 
+│   ├── Supportive / Non-supportive / Neutral
 │   └── Evaluation (F1) → `evaluation/`
 │
 ├──► (Optional) Search Agent
@@ -84,7 +84,7 @@ User Statement
    - [ ] Sentence reranker fine tuning (Qwen3, bert-base model)
    - [ ] Sentence Classification fine tuning (bert-base model)
    - [ ] Retrieval Augmentated Generation-> better utilization
-   
+
 ### 9. **(Optional) Search Agent / Iterative Pipeline**
    - [ ] Build an agent that checks classification/retrieval confidence
    - [ ] If confidence is low, reformulate query and repeat retrieval/sentence extraction up to N times
@@ -146,7 +146,8 @@ User Statement
 - [x] Day 5: Line Retrieval Evaluation and adjust modular evaluation for better cumstomization.
 - [x] Day 6: Finish Full Document/Line retrieval, reranker pipeline and their evaluation.
 - [x] Day 7: Finish Qwen3 Reasoner for claim verification and reasoning. Finish its evaluation and made multiple experiments
-= [ ] Day 8: Prepare fine tuning scripts for document retriever and reranker.
+- [x] Day 8: Prepare fine tuning scripts for document reranker.
+- [ ] Day 9: Fine tune document retriever and add it into modular evaluation code
 
 ---
 

@@ -81,7 +81,7 @@ def modular_eval(
     emb_path=None,
     docs_path="data/doc_level_docs.pkl",
     sent_path="data/sentence_level_docs.pkl",
-    claims_path="data/test.jsonl",
+    claims_path="data/train.jsonl",
     cutoff_list=[1, 2, 3, 4, 5, 10, 15],
     json_save_path="retrieval_eval_results.json",
 ):
@@ -89,18 +89,18 @@ def modular_eval(
     doc_objs = load_pickle_documents(docs_path)
     doc_ids = [doc.metadata["id"] for doc in doc_objs]
     # Load claims
-    test_claims = load_claims(claims_path, exclude_nei=False)
+    test_claims = load_claims(claims_path, exclude_nei=True)
     print(f"Loaded {len(test_claims)} claims from {claims_path}")
     # Do doc retrieval
     # retr_results = multi_process_bm25_module(
     #     test_claims, "indexes/bm25_index.pkl", doc_ids, documents, n_jobs, topk=15
     # )
     retriever = Qwen3EmbeddingRetriever(  # Qwen3EmbeddingRetriever STEmbeddingRetriever
-        model_name="Qwen/Qwen3-Embedding-0.6B",
+        model_name="Qwen/Qwen3-Embedding-4B",
         documents=doc_objs,
         doc_ids=doc_ids,
-        index_path="./indexes/qwen3_06b_512_index.faiss",
-        emb_path="./embeddings/qwen3_06b_512.emb.npy",
+        index_path="./indexes/qwen3_4b_512_index.faiss",
+        emb_path="./embeddings/qwen3_4b_512.emb.npy",
         batch_size=64,
         max_length=512,
     )
@@ -114,7 +114,21 @@ def modular_eval(
     )
     show_retrieval_metrics(cutoff_list, retriever_scores_at_n, tag="retriever")
     retriever.cleanup()
+    with open("data/train_pred_doc_data.jsonl", "w", encoding="utf-8") as f:
+        for item in retr_results:
+            buf_lst = {
+                "claim": item["claim"],
+                "label": item["label"],
+                "pred_docs": {
+                    i["doc_id"]: i["text"].page_content for i in item["dense_docs"]
+                },
+                "gold_doc_ids": item["gold_doc_ids"],
+                "evidence": item["evidence"],
+            }
+            f.write(json.dumps(buf_lst, ensure_ascii=False) + "\n")
+    exit()
     del retriever
+
     # Do doc Reranker
     reranker = Qwen3Reranker(model_name="Qwen/Qwen3-Reranker-0.6B", batch_size=32)
     rerank_results = rerank_module(
