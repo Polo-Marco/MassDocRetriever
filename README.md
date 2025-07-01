@@ -147,7 +147,8 @@ User Statement
 - [x] Day 6: Finish Full Document/Line retrieval, reranker pipeline and their evaluation.
 - [x] Day 7: Finish Qwen3 Reasoner for claim verification and reasoning. Finish its evaluation and made multiple experiments
 - [x] Day 8: Prepare fine tuning scripts for document reranker.
-- [ ] Day 9: Fine tune document retriever and add it into modular evaluation code
+- [x] Day 9: Fine tune document retriever and add it into modular evaluation code
+- [ ] Day 10: Finish full pipeline with modular evaluation.
 
 ---
 

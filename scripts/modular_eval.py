@@ -6,6 +6,7 @@ from tqdm import tqdm
 from evaluation.eval_metrics import compute_ndcg_at_k
 from evaluation.eval_utils import (evidence_line_match, evidence_match,
                                    show_retrieval_metrics)
+from rerankers.bert_doc_reranker.BertDocReranker import BertDocReranker
 from rerankers.embedding_reranker import Qwen3Reranker
 from retrievers.Qwen3EmbeddingRetriever import Qwen3EmbeddingRetriever
 from scripts.reranker_eval import rerank_module
@@ -81,8 +82,8 @@ def modular_eval(
     emb_path=None,
     docs_path="data/doc_level_docs.pkl",
     sent_path="data/sentence_level_docs.pkl",
-    claims_path="data/train.jsonl",
-    cutoff_list=[1, 2, 3, 4, 5, 10, 15],
+    claims_path="data/test.jsonl",
+    cutoff_list=[1, 2, 3, 4, 5, 10, 15, 20, 50, 100],
     json_save_path="retrieval_eval_results.json",
 ):
     # Load docs
@@ -114,23 +115,16 @@ def modular_eval(
     )
     show_retrieval_metrics(cutoff_list, retriever_scores_at_n, tag="retriever")
     retriever.cleanup()
-    with open("data/train_pred_doc_data.jsonl", "w", encoding="utf-8") as f:
-        for item in retr_results:
-            buf_lst = {
-                "claim": item["claim"],
-                "label": item["label"],
-                "pred_docs": {
-                    i["doc_id"]: i["text"].page_content for i in item["dense_docs"]
-                },
-                "gold_doc_ids": item["gold_doc_ids"],
-                "evidence": item["evidence"],
-            }
-            f.write(json.dumps(buf_lst, ensure_ascii=False) + "\n")
-    exit()
     del retriever
-
     # Do doc Reranker
-    reranker = Qwen3Reranker(model_name="Qwen/Qwen3-Reranker-0.6B", batch_size=32)
+    # reranker = Qwen3Reranker(model_name="Qwen/Qwen3-Reranker-0.6B", batch_size=32)
+    reranker = BertDocReranker(
+        model_name="hfl/chinese-pert-large",
+        model_path="models/zh_pert_large_ckpt",
+        device="cuda",
+        batch_size=100,
+        debug=False,
+    )
     rerank_results = rerank_module(
         retr_results, reranker, tag_name="dense", mode="doc", topk=5
     )
@@ -141,6 +135,7 @@ def modular_eval(
     reranker.cleanup()
     del reranker
     show_retrieval_metrics(cutoff_list, rerank_scores_at_n, tag="reranker")
+    exit()
     # Do sentence retrieval
     # load sentence level data
     sent_objs = load_pickle_documents(sent_path)
@@ -193,4 +188,4 @@ def modular_eval(
 
 
 if __name__ == "__main__":
-    modular_eval(n_jobs=20, topk=10, json_save_path=None)
+    modular_eval(n_jobs=20, topk=100, json_save_path=None)

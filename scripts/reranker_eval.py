@@ -13,7 +13,7 @@ def doc_reranker_worker(example, reranker, candidates, topk=10):
     gold_doc_ids = set()
     top_docs = reranker.rerank(claim_text, candidates, topk=topk)
     if label.upper() == "NOT ENOUGH INFO":
-        # NEI case: no golds, so just return dummy values
+        # NEI case: no golds, so just return dummy values for ground truth
         return NEI_doc_return(claim_text, label, top_docs, gold_evidence)
     for group in gold_evidence:
         for item in group:

@@ -29,7 +29,11 @@ def doc_dense_worker(example, model, topk=10):
     gold_evidence = example["evidence"]
     gold_doc_ids = set()
     label = example["label"]
-    top_docs = model.retrieve(claim_text, k=topk)
+    top_docs = model.retrieve(claim_text, k=topk)  # this is Document object
+    # turn to dictionary
+    top_docs = [
+        {"doc_id": doc["doc_id"], "text": doc["text"].page_content} for doc in top_docs
+    ]
     if label.upper() == "NOT ENOUGH INFO":
         # NEI case: no golds, so just return dummy values
         return NEI_doc_return(claim_text, label, top_docs, gold_evidence)

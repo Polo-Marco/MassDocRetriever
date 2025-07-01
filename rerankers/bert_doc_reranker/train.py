@@ -28,8 +28,8 @@ def main():
         val_dataset=val_dataset,
         batch_size=64,
         lr=2e-5,
-        num_epochs=5,
-        save_dir="models/test_lpert_ckpt",
+        num_epochs=10,
+        save_dir="models/zh_pert_large_ckpt",
         save_metric="recall",
     )
     trainer.train()
