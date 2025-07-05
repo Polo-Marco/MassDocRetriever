@@ -147,8 +147,8 @@ User Statement
 - [x] Day 7: Finish Qwen3 Reasoner for claim verification and reasoning. Finish its evaluation and made multiple experiments
 - [x] Day 8: Prepare fine tuning scripts for document reranker.
 - [x] Day 9: Fine tune document retriever and add it into modular evaluation code
-- [x] Day 10: Finish full pipeline with modular evaluation. Optimize for cpu usage.
-- [ ] Day 11: Finish Sentence rerank fine tuning scripts.
+- [x] Day 10: Finish full pipeline with modular evaluation and sentence rerank fine tuning scripts. Optimize for cpu usage.
+- [ ] Day 11: Optimize custom reranker fine tuning. Prepare QA agent distillation.
 
 ---
 

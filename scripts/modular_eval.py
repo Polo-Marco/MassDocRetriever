@@ -220,12 +220,10 @@ def modular_eval(config):
         thinking=False,
     )
     reasoner_result = reasoner_module(line_rerank_results, reasoner)
-    # TODO write a score metric
     total_eval_result["reasoner_result"] = reasoner_result
     reasoner_score = strict_classification_metrics(reasoner_result, verbose=True)
     total_eval_result["reasoner_score"] = reasoner_score
     # Save result
-    # Save as JSON for compatibility (you can also use pickle for Python-native saving, but JSON is human-readable)
     if json_save_path:
         with open(json_save_path, "w", encoding="utf-8") as f:
             json.dump(total_eval_result, f, ensure_ascii=False, indent=2)

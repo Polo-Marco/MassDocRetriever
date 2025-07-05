@@ -15,21 +15,22 @@ def load_examples(json_path):
 
 def main():
     # Load data
-    train_examples = load_examples("data/doc_rerank_train.json")
-    val_examples = load_examples("data/doc_rerank_dev.json")
+    train_examples = load_examples("data/line_rerank_train.json")
+    val_examples = load_examples("data/line_rerank_dev.json")
     model_name = "hfl/chinese-pert-large"
+    max_length = 256  # set max length for training doc: 512, line: 256
     tokenizer = BertTokenizer.from_pretrained(model_name)
-    train_dataset = BertDocRerankerDataset(train_examples, tokenizer)
-    val_dataset = BertDocRerankerDataset(val_examples, tokenizer)
+    train_dataset = BertDocRerankerDataset(train_examples, tokenizer, max_length)
+    val_dataset = BertDocRerankerDataset(val_examples, tokenizer, max_length)
     model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
     trainer = BertDocTrainer(
         model,
         train_dataset,
         val_dataset=val_dataset,
-        batch_size=64,
+        batch_size=84,
         lr=2e-5,
         num_epochs=10,
-        save_dir="models/zh_pert_large_ckpt",
+        save_dir="models/line_zh_pert_large_ckpt",
         save_metric="recall",
     )
     trainer.train()
