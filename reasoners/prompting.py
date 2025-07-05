@@ -32,7 +32,7 @@ def build_claim_verification_prompt(
         if with_evidence:
             prompt = (
                 "You are an expert fact checker. "
-                "Given the following claim and evidence, classify the claim as SUPPORTS, REFUTES, or NOT ENOUGH INFO, "
+                "Given the following claim and evidence, classify the claim as SUPPORTS or REFUTES, "
                 "and briefly explain your reasoning.\n\n"
                 f"Claim: {claim}\n"
                 f"Evidence:\n{joined_evidence}\n"
@@ -53,29 +53,27 @@ def build_claim_verification_prompt(
     elif language == "zh":
         if with_evidence:
             prompt = (
-                "你是一位資深事實查核專家。"
-                "根據下列論述與證據，請判斷該論述的真實性，分為 SUPPORTS（支持）、REFUTES（反駁）、NOT ENOUGH INFO（資訊不足），"
+                "你是一位推理專家。\n"
+                "根據下列論述與證據，請判斷該論述的真實性，分為 SUPPORTS（支持）、REFUTES（反駁），"
                 "並簡要說明你的判斷理由。\n\n"
-                f"論述: {claim}\n"
-                f"證據:\n{joined_evidence}\n"
-                "請用以下格式回答：\n"
-                "label: <SUPPORTS/REFUTES>\n"  # exclude NEI for fair comparison
-                "reason: <你的說明>\n"
+                f"論述：{claim}\n"
+                f"證據：\n{joined_evidence}\n"
+                "用以下格式回答：\n"
+                "label: <SUPPORTS/REFUTES>\n"
+                "reason: <你的理由>\n"
             )
         else:
             prompt = (
-                "你是一位資深事實查核專家。"
-                "根據下列論述，請判斷該論述的真實性，分為 SUPPORTS（支持）、REFUTES（反駁）、NOT ENOUGH INFO（資訊不足），"
-                "並簡要說明你的判斷理由。\n\n"
-                f"論述: {claim}\n"
-                "請用以下格式回答：\n"
+                "你是一位事實查核專家。\n"
+                "根據你現有的知識，判斷該論述的真實性，分為 SUPPORTS（支持）、REFUTES（反駁），"
+                "若你認為沒有足夠的信心做出判斷，標註 NOT ENOUGH INFO（資訊不足）。\n"
+                "簡要說明你的判斷理由。\n\n"
+                f"論述：{claim}\n"
+                "用以下格式回答：\n"
                 "label: <SUPPORTS/REFUTES/NOT ENOUGH INFO>\n"
-                "reason: <你的說明>\n"
+                "reason: <你的理由>\n"
             )
     else:
         raise ValueError("Language must be 'en' or 'zh'.")
 
     return prompt
-
-
-# Optionally, you can add more functions for more prompt styles, etc.

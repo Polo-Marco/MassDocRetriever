@@ -3,41 +3,46 @@ from multiprocessing import Pool
 
 from tqdm import tqdm
 
-from evaluation.eval_metrics import compute_ndcg_at_k
+from evaluation.eval_metrics import (compute_ndcg_at_k,
+                                     strict_classification_metrics)
 from evaluation.eval_utils import (evidence_line_match, evidence_match,
                                    show_retrieval_metrics)
+from reasoners.QwenReasoner import QwenReasoner
 from rerankers.bert_doc_reranker.BertDocReranker import BertDocReranker
+# models
 from rerankers.embedding_reranker import Qwen3Reranker
 from retrievers.Qwen3EmbeddingRetriever import Qwen3EmbeddingRetriever
+# eval tools
 from scripts.reranker_eval import rerank_module
 from scripts.run_bm25_eval import (bm25_worker, init_worker,
                                    multi_process_bm25_module)
+from scripts.run_reasoner_eval import reasoner_module
 from scripts.run_retriever_eval import doc_dense_worker, line_dense_worker
 from utils.data_utils import load_claims, load_pickle_documents
 
 
-def dense_retrieval_module(examples, retriever, topk=5, mode="doc", tag_name="dense"):
+def dense_retrieval_module(examples, retriever, topk=5, mode="doc"):
     results = []
     for example in tqdm(examples):
         if mode == "doc":
             results.append(doc_dense_worker(example, retriever, topk=topk))
         else:
             # turn docs dict into candidate list
-            candidates = [ex["doc_id"] for ex in example[f"{tag_name}_docs"]]
+            candidates = [ex["doc_id"] for ex in example["pred_docs"]]
             results.append(
                 line_dense_worker(example, retriever, candidates=candidates, topk=topk)
             )
     return results
 
 
-def gather_doc_results(cutoff_list, results, tag_name="bm25"):
+def gather_doc_results(cutoff_list, results):
     scores_at_n = {n: {"ndcg": [], "hit": []} for n in cutoff_list}
     for ex in tqdm(results):
         if ex["label"].upper() == "NOT ENOUGH INFO":
             continue
         gold_doc_ids = set(ex["gold_doc_ids"])
         gold_evidence = ex["evidence"]
-        retr_docs = ex[f"{tag_name}_docs"]
+        retr_docs = ex["pred_docs"]
         for n in cutoff_list:
             # retriever scores
             pred_doc_ids_retr = [str(doc["doc_id"]) for doc in retr_docs[:n]]
@@ -50,12 +55,12 @@ def gather_doc_results(cutoff_list, results, tag_name="bm25"):
     return scores_at_n
 
 
-def gather_line_results(cutoff_list, results, tag_name="dense"):
+def gather_line_results(cutoff_list, results):
     scores_at_n = {n: {"ndcg": [], "hit": []} for n in cutoff_list}
     for ex in results:
         if ex["label"].upper() == "NOT ENOUGH INFO":
             continue
-        lines = ex[f"{tag_name}_lines"]  # List of dicts from retrieve_sentence
+        lines = ex["pred_lines"]  # List of dicts from retrieve_sentence
         gold_pairs = set(ex["gold_pairs"])
         evidence = ex["evidence"]
         # Prepare predicted (doc_id, line_id) pairs
@@ -76,116 +81,170 @@ def gather_line_results(cutoff_list, results, tag_name="dense"):
     return scores_at_n
 
 
-def modular_eval(
-    n_jobs=10,
-    topk=20,
-    emb_path=None,
-    docs_path="data/doc_level_docs.pkl",
-    sent_path="data/sentence_level_docs.pkl",
-    claims_path="data/test.jsonl",
-    cutoff_list=[1, 2, 3, 4, 5, 10, 15, 20, 50, 100],
-    json_save_path="retrieval_eval_results.json",
-):
+def modular_eval(config):
+    print(config)
+    docs_path = config["docs_path"]
+    line_path = config["lines_path"]
+    claims_path = config["claims_path"]
+    cutoff_list = config["cutoff_list"]
+    json_save_path = config["json_save_path"]
     # Load docs
     doc_objs = load_pickle_documents(docs_path)
     doc_ids = [doc.metadata["id"] for doc in doc_objs]
     # Load claims
-    test_claims = load_claims(claims_path, exclude_nei=True)
+    test_claims = load_claims(claims_path, exclude_nei=False)
     print(f"Loaded {len(test_claims)} claims from {claims_path}")
+    total_eval_result = {"meta": config}
     # Do doc retrieval
-    # retr_results = multi_process_bm25_module(
-    #     test_claims, "indexes/bm25_index.pkl", doc_ids, documents, n_jobs, topk=15
-    # )
-    retriever = Qwen3EmbeddingRetriever(  # Qwen3EmbeddingRetriever STEmbeddingRetriever
-        model_name="Qwen/Qwen3-Embedding-4B",
-        documents=doc_objs,
-        doc_ids=doc_ids,
-        index_path="./indexes/qwen3_4b_512_index.faiss",
-        emb_path="./embeddings/qwen3_4b_512.emb.npy",
-        batch_size=64,
-        max_length=512,
-    )
-    retriever.load_model()
-    retriever.load_index()
-    retr_results = []
-    for example in tqdm(test_claims):
-        retr_results.append(doc_dense_worker(example, retriever, topk=topk))
+    if config["retriever"]["model_name"] == "bm25":
+        documents = [doc.page_content for doc in doc_objs]
+        retr_results = multi_process_bm25_module(
+            test_claims,
+            config["retriever"]["index_path"],
+            doc_ids,
+            documents,
+            n_jobs=config["retriever"]["n_jobs"],
+            topk=config["retriever"]["topk"],
+        )
+    # ---------TODO------- use config for modular evalaution
+    else:
+        retriever = (
+            Qwen3EmbeddingRetriever(  # Qwen3EmbeddingRetriever STEmbeddingRetriever
+                model_name=config["retriever"]["model_name"],
+                documents=doc_objs,
+                doc_ids=doc_ids,
+                index_path=config["retriever"]["index_path"],
+                emb_path=config["retriever"]["emb_path"],
+                batch_size=config["retriever"]["batch_size"],
+                max_length=config["retriever"]["max_length"],
+                use_gpu=config["retriever"]["use_gpu"],
+            )
+        )
+        retriever.load_model()
+        retriever.load_index()
+        retr_results = []
+        for example in tqdm(test_claims):
+            retr_results.append(
+                doc_dense_worker(example, retriever, topk=config["retriever"]["topk"])
+            )
+        retriever.cleanup()
+        del retriever
+    print(retr_results[0])
     retriever_scores_at_n = gather_doc_results(
-        cutoff_list, retr_results, tag_name="dense"
+        cutoff_list,
+        retr_results,
     )
+    total_eval_result["retriever_scores"] = retriever_scores_at_n
     show_retrieval_metrics(cutoff_list, retriever_scores_at_n, tag="retriever")
-    retriever.cleanup()
-    del retriever
     # Do doc Reranker
-    # reranker = Qwen3Reranker(model_name="Qwen/Qwen3-Reranker-0.6B", batch_size=32)
-    reranker = BertDocReranker(
-        model_name="hfl/chinese-pert-large",
-        model_path="models/zh_pert_large_ckpt",
-        device="cuda",
-        batch_size=100,
-        debug=False,
-    )
+    if "Qwen" in config["reranker"]["model_name"]:
+        reranker = Qwen3Reranker(
+            model_name=config["reranker"]["model_name"],
+            batch_size=config["reranker"]["batch_size"],
+            device=config["reranker"]["device"],
+        )
+    else:
+        reranker = BertDocReranker(
+            model_name=config["reranker"]["model_name"],
+            model_path=config["reranker"]["model_path"],
+            device=config["reranker"]["device"],
+            batch_size=config["reranker"]["batch_size"],
+            debug=False,
+        )
     rerank_results = rerank_module(
-        retr_results, reranker, tag_name="dense", mode="doc", topk=5
+        retr_results, reranker, mode="doc", topk=config["reranker"]["topk"]
     )
+    print(rerank_results[0])
     # Prepare per-n cutoff score collectors
     rerank_scores_at_n = gather_doc_results(
-        cutoff_list, rerank_results, tag_name="dense"
+        cutoff_list,
+        rerank_results,
     )
+    total_eval_result["reranker_scores"] = rerank_scores_at_n
     reranker.cleanup()
     del reranker
     show_retrieval_metrics(cutoff_list, rerank_scores_at_n, tag="reranker")
-    exit()
+    del doc_objs
     # Do sentence retrieval
     # load sentence level data
-    sent_objs = load_pickle_documents(sent_path)
+    sent_objs = load_pickle_documents(line_path)
     # prepare retriever
     line_retriever = Qwen3EmbeddingRetriever(
-        model_name="Qwen/Qwen3-Embedding-0.6B",
+        model_name=config["line_retriever"]["model_name"],
         documents=sent_objs,
-        batch_size=32,
-        use_gpu=True,
-        max_length=256,
+        batch_size=config["line_retriever"]["batch_size"],
+        use_gpu=config["line_retriever"]["use_gpu"],
+        max_length=config["line_retriever"]["max_length"],
     )
     line_retriever.load_model()
     line_retrieve_results = dense_retrieval_module(
-        rerank_results, line_retriever, topk=15, mode="line"
+        rerank_results,
+        line_retriever,
+        topk=config["line_retriever"]["topk"],
+        mode="line",
     )
-    line_retriever_scores_at_n = gather_line_results(
-        cutoff_list, line_retrieve_results, tag_name="dense"
-    )
+    print(line_retrieve_results[0])
+    line_retriever_scores_at_n = gather_line_results(cutoff_list, line_retrieve_results)
+    total_eval_result["line_retriever_scores"] = line_retriever_scores_at_n
     show_retrieval_metrics(
         cutoff_list, line_retriever_scores_at_n, tag="line retriever"
     )
     line_retriever.cleanup()
     del line_retriever
     line_reranker = Qwen3Reranker(
-        model_name="Qwen/Qwen3-Reranker-0.6B", batch_size=32, max_length=256
+        model_name=config["line_reranker"]["model_name"],
+        batch_size=config["line_reranker"]["batch_size"],
+        max_length=config["line_reranker"]["max_length"],
     )
     # do sentence reranker
     line_rerank_results = rerank_module(
-        line_retrieve_results, line_reranker, tag_name="dense", mode="line", topk=5
+        line_retrieve_results,
+        line_reranker,
+        mode="line",
+        topk=config["line_reranker"]["topk"],
     )
+    print(line_rerank_results[0])
     # Prepare per-n cutoff score collectors
-    line_rerank_scores_at_n = gather_line_results(
-        cutoff_list, line_rerank_results, tag_name="dense"
-    )
+    line_rerank_scores_at_n = gather_line_results(cutoff_list, line_rerank_results)
+    total_eval_result["line_reranker_scores"] = line_rerank_scores_at_n
     show_retrieval_metrics(cutoff_list, line_rerank_scores_at_n, tag="line reranker")
     line_reranker.cleanup()
     del line_reranker
-    exit()
+    # Reasoner
+    reasoner = QwenReasoner(
+        model_name=config["reasoner"]["model_name"],
+        device=config["reasoner"]["device"],
+        with_evidence=True,
+        language=config["reasoner"]["language"],
+        max_new_tokens=config["reasoner"]["max_new_tokens"],
+        thinking=False,
+    )
+    reasoner_result = reasoner_module(line_rerank_results, reasoner)
+    # TODO write a score metric
+    total_eval_result["reasoner_result"] = reasoner_result
+    reasoner_score = strict_classification_metrics(reasoner_result, verbose=True)
+    total_eval_result["reasoner_score"] = reasoner_score
     # Save result
     # Save as JSON for compatibility (you can also use pickle for Python-native saving, but JSON is human-readable)
-    # if json_save_path:
-    #     all_scores = {
-    #         "cutoff_list": cutoff_list,
-    #         "retriever_scores_at_n": retriever_scores_at_n,  # dict: n -> {"ndcg": [...], "hit": [...]}
-    #         "rerank_scores_at_n": rerank_scores_at_n,  # dict: n -> {"ndcg": [...], "hit": [...]}
-    #     }
-    #     with open(json_save_path, "w", encoding="utf-8") as f:
-    #         json.dump(all_scores, f, ensure_ascii=False, indent=2)
-    #     print(f"\nResults saved to {json_save_path}")
+    if json_save_path:
+        with open(json_save_path, "w", encoding="utf-8") as f:
+            json.dump(total_eval_result, f, ensure_ascii=False, indent=2)
+        print(f"\nResults saved to {json_save_path}")
 
+
+import argparse
+
+import yaml
 
 if __name__ == "__main__":
-    modular_eval(n_jobs=20, topk=100, json_save_path=None)
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--config",
+        type=str,
+        required=True,
+        help="Path to YAML config file for modular_eval.",
+    )
+    args = parser.parse_args()
+    with open(args.config, "r") as f:
+        config = yaml.safe_load(f)
+    modular_eval(config)

@@ -1,0 +1,63 @@
+experiment_name: "qwen06-100_qwen06-5_qwen06-25_qwen06-5_qwen4"
+
+# Data files
+docs_path: "data/doc_level_docs.pkl"
+lines_path: "data/sentence_level_docs.pkl"
+claims_path: "data/test.jsonl"
+
+# Retrieval parameters
+retriever:
+  model_name: "Qwen/Qwen3-Embedding-0.6B"
+  emb_path: "./embeddings/qwen3_06b_512.emb.npy"
+  index_path: "./indexes/qwen3_06b_512_index.faiss"
+  batch_size: 64
+  use_gpu: true
+  max_length: 512
+  topk: 100
+
+# retriever:
+#   model_name: "bm25"
+#   index_path: "indexes/bm25_index.pkl"
+#   n_jobs: 30 # control only bm25 n_job
+#   topk: 100
+
+# bert reranker
+# reranker:
+#   model_name: "hfl/chinese-pert-large"
+#   model_path: "models/zh_pert_large_ckpt"
+#   device: "cpu"
+#   batch_size: 100
+#   max_length: 512 #max 512 for bert
+#   topk: 5
+#qwen reranker
+reranker:
+  model_name: "Qwen/Qwen3-Reranker-0.6B"
+  device: "cuda"
+  batch_size: 32
+  max_length: 512
+  topk: 5
+
+line_retriever:
+  model_name: "Qwen/Qwen3-Embedding-0.6B"
+  batch_size: 128
+  use_gpu: true
+  max_length: 256
+  topk: 25
+
+line_reranker:
+  model_name: "Qwen/Qwen3-Reranker-0.6B"
+  batch_size: 64
+  max_length: 256
+  device: "cuda"
+  topk: 5
+
+reasoner:
+  model_name: "Qwen/Qwen3-4B"
+  device: "cuda"
+  language: "zh"
+  max_new_tokens: 512
+  batch_size: 128
+
+# Evaluation parameters
+cutoff_list: [1, 2, 3, 4, 5, 10, 15, 20, 25, 50, 100]
+json_save_path: "results/qwen06-100_qwen06-5_qwen06-25_qwen06-5_qwen4.json"

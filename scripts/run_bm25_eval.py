@@ -35,12 +35,15 @@ def bm25_worker(example):
         bm25=bm25_global, documents=corpus_global, doc_ids=doc_ids_global
     )
     top_docs = retriever.retrieve(claim_text, k=topk_global)
+    # trn document obejct into dictionary
+    top_docs = [{"doc_id": doc["doc_id"], "text": doc["text"]} for doc in top_docs]
     pred_doc_ids = [str(doc["doc_id"]) for doc in top_docs]
     ndcg = compute_ndcg_at_k(pred_doc_ids, gold_doc_ids, k=topk_global)
     hit = int(evidence_match(pred_doc_ids, gold_evidence))
     return {
         "claim": claim_text,
-        "bm25_docs": top_docs,
+        "label": example["label"],
+        "pred_docs": top_docs,
         "gold_doc_ids": list(gold_doc_ids),
         "evidence": gold_evidence,
         "ndcg": ndcg,
@@ -68,15 +71,16 @@ def main(n_jobs=10, topk=10):
     doc_objs = load_pickle_documents("data/doc_level_docs.pkl")
     documents = [doc.page_content for doc in doc_objs]
     doc_ids = [doc.metadata["id"] for doc in doc_objs]
-    bm25_index_path = "data/bm25_index.pkl"
+    bm25_index_path = "indexes/bm25_index.pkl"
     # --- Load claims/test set ---
-    test_claims = load_claims("data/test.jsonl", exclude_nei=True)[:20]
+    test_claims = load_claims("data/test.jsonl", exclude_nei=True)[:10]
     print(f"Loaded {len(test_claims)} claims from test.jsonl.")
 
     # Multiprocessing pool
     results = multi_process_bm25_module(
-        test_claims, n_jobs, "indexes/bm25_index.pkl", doc_ids, documents, topk
+        test_claims, bm25_index_path, doc_ids, documents, n_jobs=n_jobs, topk=topk
     )
+    print(results[0])
     # Prepare per-n cutoff score collectors
     bm25_scores_at_n = {n: {"ndcg": [], "hit": []} for n in cutoff_list}
 
@@ -84,7 +88,7 @@ def main(n_jobs=10, topk=10):
         claim = ex["claim"]
         gold_doc_ids = set(ex["gold_doc_ids"])
         gold_evidence = ex["evidence"]
-        bm25_docs = ex["bm25_docs"]
+        bm25_docs = ex["pred_docs"]
 
         for n in cutoff_list:
             # BM25 scores
@@ -107,4 +111,4 @@ def main(n_jobs=10, topk=10):
 
 
 if __name__ == "__main__":
-    main(n_jobs=20, topk=100)
+    main(n_jobs=10, topk=100)

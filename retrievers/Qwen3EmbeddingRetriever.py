@@ -174,10 +174,10 @@ class Qwen3EmbeddingRetriever:
             ).cuda()
         else:
             self.model = SentenceTransformer(self.model_name).cpu()
+            torch.cuda.empty_cache()  # release pre-loaded gpu vram
         print("Model loaded")
 
     def load_index(self):
-
         print(f"Loading FAISS index from {self.index_path} ...")
         # load embedding dimention with test embedding
         test_emb = self.model.encode(

@@ -16,7 +16,7 @@ def NEI_doc_return(claim_text, label, top_docs, gold_evidence):
     return {
         "claim": claim_text,
         "label": label,
-        "dense_docs": top_docs,
+        "pred_docs": top_docs,
         "gold_doc_ids": [],
         "evidence": gold_evidence,
         "ndcg": 0.0,  # or you could use None
@@ -47,7 +47,7 @@ def doc_dense_worker(example, model, topk=10):
     return {
         "claim": claim_text,
         "label": label,
-        "dense_docs": top_docs,
+        "pred_docs": top_docs,
         "gold_doc_ids": list(gold_doc_ids),
         "evidence": gold_evidence,
         "ndcg": ndcg,
@@ -59,11 +59,11 @@ def NEI_line_return(claim_text, label, top_lines, gold_evidence):
     return {
         "claim": claim_text,
         "label": label,
-        "dense_lines": top_lines,
+        "pred_lines": top_lines,
         "gold_pairs": [],
         "evidence": gold_evidence,
         "ndcg": 0,
-        "hit": 0,
+        "hit": 1,
     }
 
 
@@ -102,7 +102,7 @@ def line_dense_worker(example, model, candidates=[], topk=10):
     return {
         "claim": claim_text,
         "label": label,
-        "dense_lines": top_lines,
+        "pred_lines": top_lines,
         "gold_pairs": list(gold_pairs),
         "evidence": gold_evidence,
         "ndcg": ndcg,
@@ -134,7 +134,7 @@ def doc_retrieval_eval(mode="bm25", n_jobs=10, topk=10):
     bm25_dict = {}
     # ----- BM25 (multi-process) -----
     if mode in ("bm25", "hybrid"):
-        bm25_index_path = "data/bm25_index.pkl"
+        bm25_index_path = "indexes/bm25_index.pkl"
         with open(bm25_index_path, "rb") as f:
             bm25 = pickle.load(f)
         with Pool(

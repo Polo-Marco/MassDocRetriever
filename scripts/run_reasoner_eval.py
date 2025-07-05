@@ -5,6 +5,37 @@ from reasoners.QwenReasoner import QwenReasoner
 from utils.data_utils import load_claims, load_pickle_documents
 
 
+def reasoner_module(
+    examples,  # List of claim dicts, each with "claim", "label", etc.
+    reasoner=None,  # Your reasoner (must have reason_batch)
+    use_evidence=True,  # Use evidence or not
+    batch_size=8,  # Reasoner batch size
+):
+    gold_labels, pred_labels, results = [], [], []
+    n = len(examples)
+    for i in tqdm(range(0, n, batch_size)):
+        batch_claims_ex = examples[i : i + batch_size]
+        batch_claims = [ex["claim"] for ex in batch_claims_ex]
+        gold_labels.extend([ex["label"].upper() for ex in batch_claims_ex])
+        batch_evidence = [ex["pred_lines"] for ex in batch_claims_ex]
+        batch_outputs = reasoner.reason_batch(batch_claims, batch_evidence)
+        for claim_ex, output in zip(batch_claims_ex, batch_outputs):
+            pred_labels.append(output["label"].upper())
+            results.append(
+                {
+                    "claim": claim_ex["claim"],
+                    "gold_label": claim_ex["label"],
+                    "pred_lines": claim_ex["pred_lines"],
+                    "pred_label": output["label"],
+                    "reason": output["reason"],
+                    "raw_output": output["raw_output"],
+                    "hit": claim_ex["hit"],
+                    # Add more fields if you want, e.g. "evidence"
+                }
+            )
+    return results
+
+
 def get_candidates_for_claim(claim, sent_objs, evidence):
     """
     Returns only the sentences in sent_objs that match (doc_id, line_id) pairs in claim's gold evidence.
@@ -31,10 +62,12 @@ def get_candidates_for_claim(claim, sent_objs, evidence):
 def run_reasoner_eval(
     claims_path="data/test.jsonl",
     sent_path="data/sentence_level_docs.pkl",
+    model_name="Qwen/Qwen3-4B",
     topk=5,
     use_evidence=True,
     language="en",
     max_new_tokens=512,
+    thinking=False,
 ):
     print(f"Reasoning with Evidence: {use_evidence} Language: {language}")
     print(f"Loading evidence from {sent_path}")
@@ -45,11 +78,12 @@ def run_reasoner_eval(
 
     # Initialize reasoner
     reasoner = QwenReasoner(
-        model_name="Qwen/Qwen3-4B",
+        model_name=model_name,
         device="auto",
         with_evidence=use_evidence,
         language=language,
         max_new_tokens=max_new_tokens,
+        thinking=thinking,
     )
 
     batch_size = 36
@@ -88,11 +122,15 @@ def run_reasoner_eval(
             )
     # Classification report
     print("=== Classification Report ===")
-    print(classification_report(gold_labels, pred_labels, digits=3, zero_division=0))
+    print(
+        classification_report(
+            gold_labels, pred_labels, digits=2 if use_evidence else 3, zero_division=0
+        )
+    )
     # Optionally save outputs to JSONL
     import json
 
-    filename = f"results/qwen4b_reasoner_eval_outputs_{'we' if use_evidence else 'woe'}_{language}_mnt{max_new_tokens}.jsonl"
+    filename = f"results/{model_name.split('/')[-1]}_pe_reasoner_eval_outputs_{'we' if use_evidence else 'woe'}_{language}_mnt{max_new_tokens}.jsonl"
     with open(filename, "w", encoding="utf-8") as f:
         for ex in outputs:
             f.write(json.dumps(ex, ensure_ascii=False) + "\n")
@@ -100,7 +138,18 @@ def run_reasoner_eval(
 
 
 if __name__ == "__main__":
-    run_reasoner_eval(use_evidence=False, language="en", max_new_tokens=512)
-    run_reasoner_eval(use_evidence=True, language="en", max_new_tokens=512)
-    run_reasoner_eval(use_evidence=False, language="zh", max_new_tokens=512)
-    run_reasoner_eval(use_evidence=True, language="zh", max_new_tokens=512)
+    reasoner = QwenReasoner(
+        model_name="Qwen/Qwen3-0.6B",
+        device="cpu",
+        with_evidence=True,
+        language="zh",
+        max_new_tokens=512,
+        thinking=False,
+    )
+    result = reasoner_module(test_examples, reasoner)
+    print(result)
+    # thinkig = False
+    # run_reasoner_eval(model_name ="Qwen/Qwen3-4B",use_evidence=True, language="en", max_new_tokens=512,thinking=thinkig)
+    # run_reasoner_eval(model_name ="Qwen/Qwen3-4B", use_evidence=False, language="en", max_new_tokens=512,thinking=thinkig)
+    # run_reasoner_eval(model_name ="Qwen/Qwen3-4B",use_evidence=True, language="zh", max_new_tokens=512,thinking=thinkig)
+    # run_reasoner_eval(model_name ="Qwen/Qwen3-4B",use_evidence=False, language="zh", max_new_tokens=512,thinking=thinkig)

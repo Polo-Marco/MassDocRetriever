@@ -1,5 +1,8 @@
 # reasoner/reasoner_qwen.py
 
+import gc
+
+import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from reasoners.prompting import build_claim_verification_prompt
@@ -13,14 +16,16 @@ class QwenReasoner:
         language="en",  # "en" or "zh"
         with_evidence=True,  # True or False
         max_new_tokens=512,
+        thinking=False,
     ):
         self.max_new_tokens = max_new_tokens
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name, torch_dtype="auto", device_map=device
         )
         self.language = language
         self.with_evidence = with_evidence
+        self.thinking = thinking
 
     def build_prompt(self, claim, evidence_list):
         # Use centralized prompting logic
@@ -35,7 +40,10 @@ class QwenReasoner:
         prompt = self.build_prompt(claim, evidence)
         messages = [{"role": "user", "content": prompt}]
         text = self.tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True, enable_thinking=True
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+            enable_thinking=self.thinking,
         )
         model_inputs = self.tokenizer([text], return_tensors="pt").to(self.model.device)
 
@@ -84,13 +92,14 @@ class QwenReasoner:
             self.build_prompt(claim, evidence)
             for claim, evidence in zip(batch_claims, batch_evidence_lists)
         ]
+
         messages_batch = [[{"role": "user", "content": prompt}] for prompt in prompts]
         text_batch = [
             self.tokenizer.apply_chat_template(
                 messages,
                 tokenize=False,
                 add_generation_prompt=True,
-                enable_thinking=True,
+                enable_thinking=self.thinking,
             )
             for messages in messages_batch
         ]
@@ -155,7 +164,9 @@ class QwenReasoner:
         label, reason = None, None
         # Robust matching
         m_label = re.search(
-            r"label\s*[:：]\s*(SUPPORTS|REFUTES|NOT ENOUGH INFO)", text, re.I
+            r"label\s*[:：]\s*\**\s*(SUPPORTS|REFUTES|NOT ENOUGH INFO)\s*\**",
+            text,
+            re.I,
         )
         m_reason = re.search(r"reason\s*[:：]\s*([^\n]+)", text, re.I)
         if m_label:
@@ -168,6 +179,26 @@ class QwenReasoner:
         if not reason:
             reason = text.strip()
         return label, reason
+
+    def cleanup(self):
+        """
+        Safely release model (and tokenizer) from GPU/CPU memory.
+        Call this when done with the instance.
+        """
+        try:
+            if hasattr(self, "model") and self.model is not None:
+                if hasattr(self.model, "cpu"):
+                    self.model.cpu()  # Move to CPU first (helps free GPU instantly)
+                del self.model
+                self.model = None
+            if hasattr(self, "tokenizer"):
+                del self.tokenizer
+                self.tokenizer = None
+        except Exception as e:
+            print(f"[WARN] Exception during cleanup: {e}")
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
 
 if __name__ == "__main__":

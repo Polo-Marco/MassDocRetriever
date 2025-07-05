@@ -25,7 +25,7 @@ def doc_reranker_worker(example, reranker, candidates, topk=10):
     return {
         "claim": claim_text,
         "label": example["label"],
-        "dense_docs": top_docs,
+        "pred_docs": top_docs,
         "gold_doc_ids": list(gold_doc_ids),
         "evidence": gold_evidence,
         "ndcg": ndcg,
@@ -68,7 +68,7 @@ def line_reranker_worker(example, retriever, candidates=[], topk=10):
     return {
         "claim": claim_text,
         "label": example["label"],
-        "dense_lines": top_lines,
+        "pred_lines": top_lines,
         "gold_pairs": list(gold_pairs),
         "evidence": gold_evidence,
         "ndcg": ndcg,
@@ -76,13 +76,13 @@ def line_reranker_worker(example, retriever, candidates=[], topk=10):
     }
 
 
-def rerank_module(examples, reranker, tag_name="bm25", mode="doc", topk=5):
+def rerank_module(examples, reranker, mode="doc", topk=5):
     results = []
     for example in tqdm(examples):
         if mode == "doc":
             results.append(
                 doc_reranker_worker(
-                    example, reranker, candidates=example[f"{tag_name}_docs"], topk=topk
+                    example, reranker, candidates=example["pred_docs"], topk=topk
                 )
             )
         else:
@@ -90,7 +90,7 @@ def rerank_module(examples, reranker, tag_name="bm25", mode="doc", topk=5):
                 line_reranker_worker(
                     example,
                     reranker,
-                    candidates=example[f"{tag_name}_lines"],
+                    candidates=example["pred_lines"],
                     topk=topk,
                 )
             )

@@ -71,7 +71,6 @@ User Statement
    - [X] Compute Evaluation for sentence retrieval
 
 ### 5. **Sentence Classification Pipeline**
-   - [ ] Implement rule-based classifier (supportive/non-supportive/neutral)
    - [x] Upgrade to ML/LLM-based classifier (zero-shot or fine-tuned)
    - [x] Standardize output: label, confidence, etc.
 
@@ -80,10 +79,10 @@ User Statement
    - [x] Compute F1, confusion matrix, example outputs
 
 ### 8. **Fine tuning each stage**
-   - [ ] Document reranker fine tuning (Qwen3, bert-base model)
-   - [ ] Sentence reranker fine tuning (Qwen3, bert-base model)
-   - [ ] Sentence Classification fine tuning (bert-base model)
-   - [ ] Retrieval Augmentated Generation-> better utilization
+   - [x] Document reranker fine tuning (bert-base model)
+   - [ ] Sentence reranker fine tuning (bert-base model)
+   - [ ] Sentence Classification fine tuning (Qwen3)
+   - [x] Retrieval Augmentated Generation-> better utilization
 
 ### 9. **(Optional) Search Agent / Iterative Pipeline**
    - [ ] Build an agent that checks classification/retrieval confidence
@@ -148,7 +147,8 @@ User Statement
 - [x] Day 7: Finish Qwen3 Reasoner for claim verification and reasoning. Finish its evaluation and made multiple experiments
 - [x] Day 8: Prepare fine tuning scripts for document reranker.
 - [x] Day 9: Fine tune document retriever and add it into modular evaluation code
-- [ ] Day 10: Finish full pipeline with modular evaluation.
+- [x] Day 10: Finish full pipeline with modular evaluation. Optimize for cpu usage.
+- [ ] Day 11: Finish Sentence rerank fine tuning scripts.
 
 ---
 

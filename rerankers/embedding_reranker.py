@@ -27,6 +27,7 @@ class Qwen3Reranker:
         self.model = (
             AutoModelForCausalLM.from_pretrained(model_name).to(self.device).eval()
         )
+        torch.cuda.empty_cache()  # release pre-loaded gpu vram
 
         # Optionally: flash_attention_2 and fp16 (if your environment supports)
         # self.model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, attn_implementation="flash_attention_2").to(self.device).eval()

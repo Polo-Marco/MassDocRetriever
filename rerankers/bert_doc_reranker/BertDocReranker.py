@@ -13,12 +13,16 @@ class BertDocReranker:
         model_path="bert_doc_reranker_ckpt",
         device="cuda",
         debug=False,
+        max_length=512,
     ):
+        print(f"Loading model {model_name}")
         self.tokenizer = BertTokenizer.from_pretrained(model_name)
         self.model = AutoModelForSequenceClassification.from_pretrained(model_path).to(
             device
         )
+        # torch.cuda.empty_cache()#release pre-loaded gpu vram
         self.model.eval()
+        self.max_length = max_length
         self.device = device
         self.batch_size = batch_size
         self.debug = debug
@@ -32,7 +36,11 @@ class BertDocReranker:
 
         # Tokenize all at once for efficiency
         all_inputs = self.tokenizer(
-            texts, padding=True, truncation=True, max_length=512, return_tensors="pt"
+            texts,
+            padding=True,
+            truncation=True,
+            max_length=self.max_length,
+            return_tensors="pt",
         )
         all_scores = []
         num_samples = len(texts)
