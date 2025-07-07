@@ -18,6 +18,7 @@ class BertDocTrainer:
         num_epochs=3,
         save_dir="bert_doc_reranker_ckpt",
         save_metric="f1",
+        val_steps=200,  # <--- new: evaluate every val_steps
     ):
         self.model = model
         self.train_dataset = train_dataset
@@ -32,6 +33,7 @@ class BertDocTrainer:
             "precision",
         ), "save_metric must be 'f1', 'recall', or 'precision'"
         self.save_metric = save_metric
+        self.val_steps = val_steps
 
     def compute_metrics(self, model, dataloader, accelerator):
         model.eval()
@@ -71,6 +73,7 @@ class BertDocTrainer:
             val_loader = accelerator.prepare(val_loader)
 
         best_metric = 0.0
+        global_step = 0
 
         for epoch in range(self.num_epochs):
             model.train()
@@ -83,13 +86,28 @@ class BertDocTrainer:
                 optimizer.step()
                 optimizer.zero_grad()
                 total_loss += loss.item()
+                global_step += 1
+
+                # --- Evaluate every val_steps ---
+                if self.val_dataset and (global_step % self.val_steps == 0):
+                    metrics = self.compute_metrics(model, val_loader, accelerator)
+                    print(
+                        f"[Step {global_step}] Validation - Precision: {metrics['precision']:.4f} | Recall: {metrics['recall']:.4f} | F1: {metrics['f1']:.4f}"
+                    )
+                    metric_value = metrics[self.save_metric]
+                    if metric_value > best_metric:
+                        best_metric = metric_value
+                        accelerator.unwrap_model(model).save_pretrained(self.save_dir)
+                        print(
+                            f"New best model saved at {self.save_dir} ({self.save_metric}={best_metric:.4f})"
+                        )
             print(f"Epoch {epoch+1} Loss: {total_loss/len(train_loader):.4f}")
 
-            # Validation
+            # --- Also evaluate at epoch end ---
             if self.val_dataset:
                 metrics = self.compute_metrics(model, val_loader, accelerator)
                 print(
-                    f"Validation - Precision: {metrics['precision']:.4f} | Recall: {metrics['recall']:.4f} | F1: {metrics['f1']:.4f}"
+                    f"Epoch End Validation - Precision: {metrics['precision']:.4f} | Recall: {metrics['recall']:.4f} | F1: {metrics['f1']:.4f}"
                 )
                 metric_value = metrics[self.save_metric]
                 if metric_value > best_metric:

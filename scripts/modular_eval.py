@@ -191,11 +191,20 @@ def modular_eval(config):
     )
     line_retriever.cleanup()
     del line_retriever
-    line_reranker = Qwen3Reranker(
-        model_name=config["line_reranker"]["model_name"],
-        batch_size=config["line_reranker"]["batch_size"],
-        max_length=config["line_reranker"]["max_length"],
-    )
+    if "Qwen" in config["line_reranker"]["model_name"]:
+        line_reranker = Qwen3Reranker(
+            model_name=config["line_reranker"]["model_name"],
+            batch_size=config["line_reranker"]["batch_size"],
+            max_length=config["line_reranker"]["max_length"],
+        )
+    else:
+        line_reranker = BertDocReranker(
+            model_name=config["line_reranker"]["model_name"],
+            model_path=config["line_reranker"]["model_path"],
+            device=config["line_reranker"]["device"],
+            batch_size=config["line_reranker"]["batch_size"],
+            debug=False,
+        )
     # do sentence reranker
     line_rerank_results = rerank_module(
         line_retrieve_results,
@@ -218,6 +227,7 @@ def modular_eval(config):
         language=config["reasoner"]["language"],
         max_new_tokens=config["reasoner"]["max_new_tokens"],
         thinking=False,
+        exclude_nei=False,
     )
     reasoner_result = reasoner_module(line_rerank_results, reasoner)
     total_eval_result["reasoner_result"] = reasoner_result

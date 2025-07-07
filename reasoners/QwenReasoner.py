@@ -17,6 +17,7 @@ class QwenReasoner:
         with_evidence=True,  # True or False
         max_new_tokens=512,
         thinking=False,
+        exclude_nei=False,
     ):
         self.max_new_tokens = max_new_tokens
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
@@ -26,6 +27,7 @@ class QwenReasoner:
         self.language = language
         self.with_evidence = with_evidence
         self.thinking = thinking
+        self.exclude_nei = exclude_nei
 
     def build_prompt(self, claim, evidence_list):
         # Use centralized prompting logic
@@ -34,6 +36,7 @@ class QwenReasoner:
             evidence_list=evidence_list,
             language=self.language,
             with_evidence=self.with_evidence,
+            exclude_nei=self.exclude_nei,
         )
 
     def reason(self, claim, evidence):

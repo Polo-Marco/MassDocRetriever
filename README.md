@@ -80,7 +80,7 @@ User Statement
 
 ### 8. **Fine tuning each stage**
    - [x] Document reranker fine tuning (bert-base model)
-   - [ ] Sentence reranker fine tuning (bert-base model)
+   - [x] Sentence reranker fine tuning (bert-base model)
    - [ ] Sentence Classification fine tuning (Qwen3)
    - [x] Retrieval Augmentated Generation-> better utilization
 
@@ -148,7 +148,8 @@ User Statement
 - [x] Day 8: Prepare fine tuning scripts for document reranker.
 - [x] Day 9: Fine tune document retriever and add it into modular evaluation code
 - [x] Day 10: Finish full pipeline with modular evaluation and sentence rerank fine tuning scripts. Optimize for cpu usage.
-- [ ] Day 11: Optimize custom reranker fine tuning. Prepare QA agent distillation.
+- [x] Day 11: Optimize custom reranker fine tuning. Prepare QA agent distillation (Qwen3-235B).
+- [ ] Day 12: Reason distillation from teacher models. Visualize modular evaluation results.
 
 ---
 

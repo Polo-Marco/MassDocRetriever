@@ -1,4 +1,4 @@
-experiment_name: "qwen06-100_qwen06-5_qwen06-25_qwen06-5_qwen4"
+experiment_name: "qwen06-100_qwen06-5_qwen06-100_qwen06-5_qwen4"
 
 # Data files
 docs_path: "data/doc_level_docs.pkl"
@@ -42,7 +42,7 @@ line_retriever:
   batch_size: 128
   use_gpu: true
   max_length: 256
-  topk: 25
+  topk: 100
 
 line_reranker:
   model_name: "Qwen/Qwen3-Reranker-0.6B"
@@ -60,4 +60,4 @@ reasoner:
 
 # Evaluation parameters
 cutoff_list: [1, 2, 3, 4, 5, 10, 15, 20, 25, 50, 100]
-json_save_path: "results/qwen06-100_qwen06-5_qwen06-25_qwen06-5_qwen4.json"
+json_save_path: "results/qwen06-100_qwen06-5_qwen06-100_qwen06-5_qwen4.json"

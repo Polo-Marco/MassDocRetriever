@@ -12,3 +12,4 @@ share
 __pycache__
 results
 models
+llama.cpp

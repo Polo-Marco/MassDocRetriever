@@ -2,7 +2,7 @@
 
 
 def build_claim_verification_prompt(
-    claim, evidence_list=None, language="en", with_evidence=True
+    claim, evidence_list=None, language="en", with_evidence=True, exclude_nei=True
 ):
     """
     Build prompt for claim verification.
@@ -30,16 +30,28 @@ def build_claim_verification_prompt(
 
     if language == "en":
         if with_evidence:
-            prompt = (
-                "You are an expert fact checker. "
-                "Given the following claim and evidence, classify the claim as SUPPORTS or REFUTES, "
-                "and briefly explain your reasoning.\n\n"
-                f"Claim: {claim}\n"
-                f"Evidence:\n{joined_evidence}\n"
-                "Output in the format:\n"
-                "label: <SUPPORTS/REFUTES>\n"  # exclude NEI for fair comparison
-                "reason: <your explanation>\n"
-            )
+            if exclude_nei:
+                prompt = (
+                    "You are an expert fact checker. "
+                    "Given the following claim and evidence, classify the claim as SUPPORTS or REFUTES, "
+                    "and briefly explain your reasoning.\n\n"
+                    f"Claim: {claim}\n"
+                    f"Evidence:\n{joined_evidence}\n"
+                    "Output in the format:\n"
+                    "label: <SUPPORTS/REFUTES>\n"  # exclude NEI for fair comparison
+                    "reason: <your explanation>\n"
+                )
+            else:
+                prompt = (
+                    "You are an expert fact checker. "
+                    "Given the following claim and evidence, classify the claim as SUPPORTS or REFUTES, NOT ENOUGH INFO, "
+                    "and briefly explain your reasoning.\n\n"
+                    f"Claim: {claim}\n"
+                    f"Evidence:\n{joined_evidence}\n"
+                    "Output in the format:\n"
+                    "label: <SUPPORTS/REFUTES/NOT ENOUGH INFO>\n"  # exclude NEI for fair comparison
+                    "reason: <your explanation>\n"
+                )
         else:
             prompt = (
                 "You are an expert fact checker. "
@@ -52,16 +64,28 @@ def build_claim_verification_prompt(
             )
     elif language == "zh":
         if with_evidence:
-            prompt = (
-                "你是一位推理專家。\n"
-                "根據下列論述與證據，請判斷該論述的真實性，分為 SUPPORTS（支持）、REFUTES（反駁），"
-                "並簡要說明你的判斷理由。\n\n"
-                f"論述：{claim}\n"
-                f"證據：\n{joined_evidence}\n"
-                "用以下格式回答：\n"
-                "label: <SUPPORTS/REFUTES>\n"
-                "reason: <你的理由>\n"
-            )
+            if exclude_nei:
+                prompt = (
+                    "你是一位推理專家。\n"
+                    "根據下列論述與證據，請判斷該論述的真實性，分為 SUPPORTS（支持）、REFUTES（反駁），"
+                    "並簡要說明你的判斷理由。\n\n"
+                    f"論述：{claim}\n"
+                    f"證據：\n{joined_evidence}\n"
+                    "用以下格式回答：\n"
+                    "label: <SUPPORTS/REFUTES>\n"
+                    "reason: <你的理由>\n"
+                )
+            else:
+                prompt = (
+                    "你是一位推理專家。\n"
+                    "根據下列論述與證據，請判斷該論述的真實性，分為 SUPPORTS（支持）、REFUTES（反駁）、NOT ENOUGH INFO（資訊不足），"
+                    "並簡要說明你的判斷理由。\n\n"
+                    f"論述：{claim}\n"
+                    f"證據：\n{joined_evidence}\n"
+                    "用以下格式回答：\n"
+                    "label: <SUPPORTS/REFUTES>\n"
+                    "reason: <你的理由>\n"
+                )
         else:
             prompt = (
                 "你是一位事實查核專家。\n"
