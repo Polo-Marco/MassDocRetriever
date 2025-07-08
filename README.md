@@ -149,7 +149,8 @@ User Statement
 - [x] Day 9: Fine tune document retriever and add it into modular evaluation code
 - [x] Day 10: Finish full pipeline with modular evaluation and sentence rerank fine tuning scripts. Optimize for cpu usage.
 - [x] Day 11: Optimize custom reranker fine tuning. Prepare QA agent distillation (Qwen3-235B).
-- [ ] Day 12: Reason distillation from teacher models. Visualize modular evaluation results.
+- [x] Day 12: Reason distillation from teacher models. Visualize modular evaluation results.
+- [ ] Day 13: Reason distillation stage 2. Refine distailled knowledge. Prepare full reasoning dataset.
 
 ---
 

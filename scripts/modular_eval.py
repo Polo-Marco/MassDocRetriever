@@ -218,7 +218,13 @@ def modular_eval(config):
     total_eval_result["line_reranker_scores"] = line_rerank_scores_at_n
     show_retrieval_metrics(cutoff_list, line_rerank_scores_at_n, tag="line reranker")
     line_reranker.cleanup()
+    # for training inference
     del line_reranker
+    if json_save_path:
+        with open(json_save_path, "w", encoding="utf-8") as f:
+            json.dump(total_eval_result, f, ensure_ascii=False, indent=2)
+        print(f"\nResults saved to {json_save_path}")
+    exit()
     # Reasoner
     reasoner = QwenReasoner(
         model_name=config["reasoner"]["model_name"],

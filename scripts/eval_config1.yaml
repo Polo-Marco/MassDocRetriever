@@ -1,15 +1,15 @@
-experiment_name: "qwen06-100_lpert-5_qwen06-100_lpert-5_qwen4"
+experiment_name: "train_qwen4-100_lpert-5_qwen4-100_lpert-5_qwen4"
 
 # Data files
 docs_path: "data/doc_level_docs.pkl"
 lines_path: "data/sentence_level_docs.pkl"
-claims_path: "data/test.jsonl"
+claims_path: "data/train.jsonl"
 
 # Retrieval parameters
 retriever:
-  model_name: "Qwen/Qwen3-Embedding-0.6B"
-  emb_path: "./embeddings/qwen3_06b_512.emb.npy"
-  index_path: "./indexes/qwen3_06b_512_index.faiss"
+  model_name: "Qwen/Qwen3-Embedding-4B"
+  emb_path: "./embeddings/qwen3_4b_512.emb.npy"
+  index_path: "./indexes/qwen3_4b_512_index.faiss"
   batch_size: 64
   use_gpu: true
   max_length: 512
@@ -38,7 +38,7 @@ reranker:
 #   topk: 5
 
 line_retriever:
-  model_name: "Qwen/Qwen3-Embedding-0.6B"
+  model_name: "Qwen/Qwen3-Embedding-4B"
   batch_size: 128
   use_gpu: true
   max_length: 512
@@ -67,4 +67,4 @@ reasoner:
 
 # Evaluation parameters
 cutoff_list: [1, 2, 3, 4, 5, 10, 15, 20, 25, 50, 100]
-json_save_path: "results/qwen-100_lpert-5_qwen06-100_lpert-5_qwen4.json"
+json_save_path: "results/train_qwen4b-100_lpert-5_qwen4-100_lpert-5_qwen4.json"
