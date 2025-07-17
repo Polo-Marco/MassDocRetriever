@@ -3,7 +3,9 @@
 import gc
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft import PeftConfig, PeftModel
+from transformers import (AutoModelForCausalLM, AutoTokenizer,
+                          BitsAndBytesConfig)
 
 from reasoners.prompting import build_claim_verification_prompt
 
@@ -12,22 +14,56 @@ class QwenReasoner:
     def __init__(
         self,
         model_name="Qwen/Qwen3-8B",
+        model_path=None,
         device="auto",
         language="en",  # "en" or "zh"
         with_evidence=True,  # True or False
         max_new_tokens=512,
         thinking=False,
+        output_w_reason=False,
         exclude_nei=False,
+        use_int4=True,
     ):
         self.max_new_tokens = max_new_tokens
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name, torch_dtype="auto", device_map=device
-        )
         self.language = language
         self.with_evidence = with_evidence
         self.thinking = thinking
+        self.output_w_reason = output_w_reason
         self.exclude_nei = exclude_nei
+        # Int4 loading
+        if use_int4:
+            bnb_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_use_double_quant=False,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype="float16",
+            )
+        else:
+            bnb_config = None
+
+        # Detect if using a PEFT/LoRA model
+        try:
+            peft_config = PeftConfig.from_pretrained(model_path)
+            # Load base model then apply PEFT adapter
+            base_model = AutoModelForCausalLM.from_pretrained(
+                peft_config.base_model_name_or_path,
+                device_map=device,
+                quantization_config=bnb_config,
+                trust_remote_code=True,
+            )
+            print("using int4 model with Bnb")
+            self.model = PeftModel.from_pretrained(base_model, model_path)
+        except Exception as e:
+            print(e if int4 else "")
+            print(f"using default {model_name} model")
+            # Not a PEFT/LoRA model, just load as causal LM
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                device_map=device,
+                quantization_config=bnb_config,
+                trust_remote_code=True,
+            )
 
     def build_prompt(self, claim, evidence_list):
         # Use centralized prompting logic
@@ -37,6 +73,7 @@ class QwenReasoner:
             language=self.language,
             with_evidence=self.with_evidence,
             exclude_nei=self.exclude_nei,
+            output_w_reason=self.output_w_reason,
         )
 
     def reason(self, claim, evidence):
@@ -49,7 +86,7 @@ class QwenReasoner:
             enable_thinking=self.thinking,
         )
         model_inputs = self.tokenizer([text], return_tensors="pt").to(self.model.device)
-
+        # TODO use recommended params
         generated_ids = self.model.generate(
             **model_inputs,
             max_new_tokens=self.max_new_tokens,  # Reasoning doesn't need to be long
@@ -206,11 +243,14 @@ class QwenReasoner:
 
 if __name__ == "__main__":
     reasoner = QwenReasoner(
-        model_name="Qwen/Qwen3-8B",
+        model_name="Qwen/Qwen3-8B",  # ./models/qwen3_8b_reasoner_labelonly_ckpt Qwen/Qwen3-8B
+        model_path="./models/qwen3_8b_reasoner_labelonly_ckpt/checkpoint-190",
         device="auto",
         language="zh",
         with_evidence=True,
         max_new_tokens=512,
+        use_int4=True,
+        output_w_reason=False,
     )
     claim = "天衛三軌道在天王星內部的磁層，以《仲夏夜之夢》作者緹坦妮雅命名。"
     candidate_evidence = [

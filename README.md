@@ -81,7 +81,7 @@ User Statement
 ### 8. **Fine tuning each stage**
    - [x] Document reranker fine tuning (bert-base model)
    - [x] Sentence reranker fine tuning (bert-base model)
-   - [ ] Sentence Classification fine tuning (Qwen3)
+   - [x] Sentence Classification fine tuning (Qwen3)
    - [x] Retrieval Augmentated Generation-> better utilization
 
 ### 9. **(Optional) Search Agent / Iterative Pipeline**
@@ -150,7 +150,9 @@ User Statement
 - [x] Day 10: Finish full pipeline with modular evaluation and sentence rerank fine tuning scripts. Optimize for cpu usage.
 - [x] Day 11: Optimize custom reranker fine tuning. Prepare QA agent distillation (Qwen3-235B).
 - [x] Day 12: Reason distillation from teacher models. Visualize modular evaluation results.
-- [ ] Day 13: Reason distillation stage 2. Refine distailled knowledge. Prepare full reasoning dataset.
+- [x] Day 13: Reason distillation stage 2. Refine distailled knowledge. Prepare full reasoning dataset.
+- [x] Day 14: Finish qwen reasoner training scripts. Prepare QA dataset from distilled data.
+- [ ] Day 15: Train qwen reasoner with reasoning capability and compare the results
 
 ---
 

@@ -20,7 +20,6 @@ class BertDocReranker:
         self.model = AutoModelForSequenceClassification.from_pretrained(model_path).to(
             device
         )
-        # torch.cuda.empty_cache()#release pre-loaded gpu vram
         self.model.eval()
         self.max_length = max_length
         self.device = device

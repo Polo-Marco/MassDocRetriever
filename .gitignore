@@ -13,3 +13,4 @@ __pycache__
 results
 models
 llama.cpp
+wandb

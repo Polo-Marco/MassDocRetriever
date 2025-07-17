@@ -51,6 +51,22 @@ def load_claims(jsonl_path, exclude_nei=False):
     return claims
 
 
+def load_jsonl_format(
+    jsonl_path,
+):
+    """
+    Load claims from a jsonl file, and apply preprocess_func to 'claim' and document IDs in 'evidence'.
+    """
+    claims = []
+    with open(jsonl_path, "r", encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            obj = json.loads(line)
+            claims.append(obj)
+    return claims
+
+
 # Example usage:
 if __name__ == "__main__":
     claims = load_claims("./data/test.jsonl", exclude_nei=False)
