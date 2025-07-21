@@ -2,7 +2,8 @@ import re
 
 import numpy as np
 import torch
-from sklearn.metrics import f1_score
+from sklearn.metrics import (confusion_matrix, f1_score, precision_score,
+                             recall_score)
 
 
 def preprocess_logits_for_metrics(logits, labels):
@@ -33,9 +34,34 @@ class F1ReasonerMetric:
         preds, labels = eval_preds
         # Replace -100 in labels with pad_token_id for decoding
         labels = np.where(labels == -100, self.tokenizer.pad_token_id, labels)
+        # print(labels)
         pred_strs = self.tokenizer.batch_decode(preds, skip_special_tokens=True)
         label_strs = self.tokenizer.batch_decode(labels, skip_special_tokens=True)
         pred_labels = [parse_label(x) for x in pred_strs]
         gold_labels = [parse_label(x) for x in label_strs]
+        # print(pred_labels)
         f1 = f1_score(gold_labels, pred_labels, average="macro", labels=self.label_list)
-        return {"f1": f1}
+        precision = precision_score(
+            gold_labels,
+            pred_labels,
+            average="macro",
+            labels=self.label_list,
+            zero_division=0,
+        )
+        recall = recall_score(
+            gold_labels,
+            pred_labels,
+            average="macro",
+            labels=self.label_list,
+            zero_division=0,
+        )
+        cm = confusion_matrix(gold_labels, pred_labels, labels=self.label_list)
+        print(cm)
+        # Convert confusion matrix to a nested list for JSON-serializable logging
+        cm_list = cm.tolist()
+        return {
+            "f1": f1,
+            "precision": precision,
+            "recall": recall,
+            "confusion_matrix": cm_list,
+        }

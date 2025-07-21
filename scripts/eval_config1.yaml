@@ -71,4 +71,4 @@ reasoner:
 
 # Evaluation parameters
 cutoff_list: [1, 2, 3, 4, 5, 10, 15, 20, 25, 50, 100]
-json_save_path: "qwen4-100_lpert-5_qwen06-100_lpert-5_qwen8int4ft.json"
+json_save_path: #"results/qwen4-100_lpert-5_qwen06-100_lpert-5_qwen8int4ft.json"

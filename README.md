@@ -152,7 +152,8 @@ User Statement
 - [x] Day 12: Reason distillation from teacher models. Visualize modular evaluation results.
 - [x] Day 13: Reason distillation stage 2. Refine distailled knowledge. Prepare full reasoning dataset.
 - [x] Day 14: Finish qwen reasoner training scripts. Prepare QA dataset from distilled data.
-- [ ] Day 15: Train qwen reasoner with reasoning capability and compare the results
+- [x] Day 15: Train qwen reasoner with reasoning capability and without reasoning capability
+- [ ] Day 16: compare the results among qwen3 reasoner label-only, label-reason.
 
 ---
 

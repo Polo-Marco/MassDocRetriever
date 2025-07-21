@@ -83,144 +83,151 @@ def gather_line_results(cutoff_list, results):
 
 def modular_eval(config):
     print(config)
-    docs_path = config["docs_path"]
-    line_path = config["lines_path"]
-    claims_path = config["claims_path"]
-    cutoff_list = config["cutoff_list"]
-    json_save_path = config["json_save_path"]
-    # Load docs
-    doc_objs = load_pickle_documents(docs_path)
-    doc_ids = [doc.metadata["id"] for doc in doc_objs]
-    # Load claims
-    test_claims = load_claims(claims_path, exclude_nei=False)
-    print(f"Loaded {len(test_claims)} claims from {claims_path}")
-    total_eval_result = {"meta": config}
-    # Do doc retrieval
-    if config["retriever"]["model_name"] == "bm25":
-        documents = [doc.page_content for doc in doc_objs]
-        retr_results = multi_process_bm25_module(
-            test_claims,
-            config["retriever"]["index_path"],
-            doc_ids,
-            documents,
-            n_jobs=config["retriever"]["n_jobs"],
-            topk=config["retriever"]["topk"],
-        )
-    # ---------TODO------- use config for modular evalaution
-    else:
-        retriever = (
-            Qwen3EmbeddingRetriever(  # Qwen3EmbeddingRetriever STEmbeddingRetriever
-                model_name=config["retriever"]["model_name"],
-                documents=doc_objs,
-                doc_ids=doc_ids,
-                index_path=config["retriever"]["index_path"],
-                emb_path=config["retriever"]["emb_path"],
-                batch_size=config["retriever"]["batch_size"],
-                max_length=config["retriever"]["max_length"],
-                use_gpu=config["retriever"]["use_gpu"],
-            )
-        )
-        retriever.load_model()
-        retriever.load_index()
-        retr_results = []
-        for example in tqdm(test_claims):
-            retr_results.append(
-                doc_dense_worker(example, retriever, topk=config["retriever"]["topk"])
-            )
-        retriever.cleanup()
-        del retriever
-    print(retr_results[0])
-    retriever_scores_at_n = gather_doc_results(
-        cutoff_list,
-        retr_results,
-    )
-    total_eval_result["retriever_scores"] = retriever_scores_at_n
-    show_retrieval_metrics(cutoff_list, retriever_scores_at_n, tag="retriever")
-    # Do doc Reranker
-    if "Qwen" in config["reranker"]["model_name"]:
-        reranker = Qwen3Reranker(
-            model_name=config["reranker"]["model_name"],
-            batch_size=config["reranker"]["batch_size"],
-            device=config["reranker"]["device"],
-        )
-    else:
-        reranker = BertDocReranker(
-            model_name=config["reranker"]["model_name"],
-            model_path=config["reranker"]["model_path"],
-            device=config["reranker"]["device"],
-            batch_size=config["reranker"]["batch_size"],
-            debug=False,
-        )
-    rerank_results = rerank_module(
-        retr_results, reranker, mode="doc", topk=config["reranker"]["topk"]
-    )
-    print(rerank_results[0])
-    # Prepare per-n cutoff score collectors
-    rerank_scores_at_n = gather_doc_results(
-        cutoff_list,
-        rerank_results,
-    )
-    total_eval_result["reranker_scores"] = rerank_scores_at_n
-    reranker.cleanup()
-    del reranker
-    show_retrieval_metrics(cutoff_list, rerank_scores_at_n, tag="reranker")
-    del doc_objs
-    # Do sentence retrieval
-    # load sentence level data
-    sent_objs = load_pickle_documents(line_path)
-    # prepare retriever
-    line_retriever = Qwen3EmbeddingRetriever(
-        model_name=config["line_retriever"]["model_name"],
-        documents=sent_objs,
-        batch_size=config["line_retriever"]["batch_size"],
-        use_gpu=config["line_retriever"]["use_gpu"],
-        max_length=config["line_retriever"]["max_length"],
-    )
-    line_retriever.load_model()
-    line_retrieve_results = dense_retrieval_module(
-        rerank_results,
-        line_retriever,
-        topk=config["line_retriever"]["topk"],
-        mode="line",
-    )
-    print(line_retrieve_results[0])
-    line_retriever_scores_at_n = gather_line_results(cutoff_list, line_retrieve_results)
-    total_eval_result["line_retriever_scores"] = line_retriever_scores_at_n
-    show_retrieval_metrics(
-        cutoff_list, line_retriever_scores_at_n, tag="line retriever"
-    )
-    line_retriever.cleanup()
-    del line_retriever
-    if "Qwen" in config["line_reranker"]["model_name"]:
-        line_reranker = Qwen3Reranker(
-            model_name=config["line_reranker"]["model_name"],
-            batch_size=config["line_reranker"]["batch_size"],
-            max_length=config["line_reranker"]["max_length"],
-        )
-    else:
-        line_reranker = BertDocReranker(
-            model_name=config["line_reranker"]["model_name"],
-            model_path=config["line_reranker"]["model_path"],
-            device=config["line_reranker"]["device"],
-            batch_size=config["line_reranker"]["batch_size"],
-            debug=False,
-        )
-    # do sentence reranker
-    line_rerank_results = rerank_module(
-        line_retrieve_results,
-        line_reranker,
-        mode="line",
-        topk=config["line_reranker"]["topk"],
-    )
-    print(line_rerank_results[0])
-    # Prepare per-n cutoff score collectors
-    line_rerank_scores_at_n = gather_line_results(cutoff_list, line_rerank_results)
-    total_eval_result["line_reranker_scores"] = line_rerank_scores_at_n
-    show_retrieval_metrics(cutoff_list, line_rerank_scores_at_n, tag="line reranker")
-    line_reranker.cleanup()
-    # for training inference
-    total_eval_result["line_reranker_results"] = line_rerank_results
-    del line_reranker
+    # docs_path = config["docs_path"]
+    # line_path = config["lines_path"]
+    # claims_path = config["claims_path"]
+    # cutoff_list = config["cutoff_list"]
+    # json_save_path = config["json_save_path"]
+    # # Load docs
+    # doc_objs = load_pickle_documents(docs_path)
+    # doc_ids = [doc.metadata["id"] for doc in doc_objs]
+    # # Load claims
+    # test_claims = load_claims(claims_path, exclude_nei=False)
+    # print(f"Loaded {len(test_claims)} claims from {claims_path}")
+    # total_eval_result = {"meta": config}
+    # # Do doc retrieval
+    # if config["retriever"]["model_name"] == "bm25":
+    #     documents = [doc.page_content for doc in doc_objs]
+    #     retr_results = multi_process_bm25_module(
+    #         test_claims,
+    #         config["retriever"]["index_path"],
+    #         doc_ids,
+    #         documents,
+    #         n_jobs=config["retriever"]["n_jobs"],
+    #         topk=config["retriever"]["topk"],
+    #     )
+    # # ---------TODO------- use config for modular evalaution
+    # else:
+    #     retriever = (
+    #         Qwen3EmbeddingRetriever(  # Qwen3EmbeddingRetriever STEmbeddingRetriever
+    #             model_name=config["retriever"]["model_name"],
+    #             documents=doc_objs,
+    #             doc_ids=doc_ids,
+    #             index_path=config["retriever"]["index_path"],
+    #             emb_path=config["retriever"]["emb_path"],
+    #             batch_size=config["retriever"]["batch_size"],
+    #             max_length=config["retriever"]["max_length"],
+    #             use_gpu=config["retriever"]["use_gpu"],
+    #         )
+    #     )
+    #     retriever.load_model()
+    #     retriever.load_index()
+    #     retr_results = []
+    #     for example in tqdm(test_claims):
+    #         retr_results.append(
+    #             doc_dense_worker(example, retriever, topk=config["retriever"]["topk"])
+    #         )
+    #     retriever.cleanup()
+    #     del retriever
+    # print(retr_results[0])
+    # retriever_scores_at_n = gather_doc_results(
+    #     cutoff_list,
+    #     retr_results,
+    # )
+    # total_eval_result["retriever_scores"] = retriever_scores_at_n
+    # show_retrieval_metrics(cutoff_list, retriever_scores_at_n, tag="retriever")
+    # # Do doc Reranker
+    # if "Qwen" in config["reranker"]["model_name"]:
+    #     reranker = Qwen3Reranker(
+    #         model_name=config["reranker"]["model_name"],
+    #         batch_size=config["reranker"]["batch_size"],
+    #         device=config["reranker"]["device"],
+    #     )
+    # else:
+    #     reranker = BertDocReranker(
+    #         model_name=config["reranker"]["model_name"],
+    #         model_path=config["reranker"]["model_path"],
+    #         device=config["reranker"]["device"],
+    #         batch_size=config["reranker"]["batch_size"],
+    #         debug=False,
+    #     )
+    # rerank_results = rerank_module(
+    #     retr_results, reranker, mode="doc", topk=config["reranker"]["topk"]
+    # )
+    # print(rerank_results[0])
+    # # Prepare per-n cutoff score collectors
+    # rerank_scores_at_n = gather_doc_results(
+    #     cutoff_list,
+    #     rerank_results,
+    # )
+    # total_eval_result["reranker_scores"] = rerank_scores_at_n
+    # reranker.cleanup()
+    # del reranker
+    # show_retrieval_metrics(cutoff_list, rerank_scores_at_n, tag="reranker")
+    # del doc_objs
+    # # Do sentence retrieval
+    # # load sentence level data
+    # sent_objs = load_pickle_documents(line_path)
+    # # prepare retriever
+    # line_retriever = Qwen3EmbeddingRetriever(
+    #     model_name=config["line_retriever"]["model_name"],
+    #     documents=sent_objs,
+    #     batch_size=config["line_retriever"]["batch_size"],
+    #     use_gpu=config["line_retriever"]["use_gpu"],
+    #     max_length=config["line_retriever"]["max_length"],
+    # )
+    # line_retriever.load_model()
+    # line_retrieve_results = dense_retrieval_module(
+    #     rerank_results,
+    #     line_retriever,
+    #     topk=config["line_retriever"]["topk"],
+    #     mode="line",
+    # )
+    # print(line_retrieve_results[0])
+    # line_retriever_scores_at_n = gather_line_results(cutoff_list, line_retrieve_results)
+    # total_eval_result["line_retriever_scores"] = line_retriever_scores_at_n
+    # show_retrieval_metrics(
+    #     cutoff_list, line_retriever_scores_at_n, tag="line retriever"
+    # )
+    # line_retriever.cleanup()
+    # del line_retriever
+    # if "Qwen" in config["line_reranker"]["model_name"]:
+    #     line_reranker = Qwen3Reranker(
+    #         model_name=config["line_reranker"]["model_name"],
+    #         batch_size=config["line_reranker"]["batch_size"],
+    #         max_length=config["line_reranker"]["max_length"],
+    #     )
+    # else:
+    #     line_reranker = BertDocReranker(
+    #         model_name=config["line_reranker"]["model_name"],
+    #         model_path=config["line_reranker"]["model_path"],
+    #         device=config["line_reranker"]["device"],
+    #         batch_size=config["line_reranker"]["batch_size"],
+    #         debug=False,
+    #     )
+    # # do sentence reranker
+    # line_rerank_results = rerank_module(
+    #     line_retrieve_results,
+    #     line_reranker,
+    #     mode="line",
+    #     topk=config["line_reranker"]["topk"],
+    # )
+    # print(line_rerank_results[0])
+    # # Prepare per-n cutoff score collectors
+    # line_rerank_scores_at_n = gather_line_results(cutoff_list, line_rerank_results)
+    # total_eval_result["line_reranker_scores"] = line_rerank_scores_at_n
+    # show_retrieval_metrics(cutoff_list, line_rerank_scores_at_n, tag="line reranker")
+    # line_reranker.cleanup()
+    # # for training inference
+    # total_eval_result["line_reranker_results"] = line_rerank_results
+    # del line_reranker
+    with open(
+        "results/qwen4-100_lpert-5_qwen06-100_lpert-5_qwen8int4ft.json",
+        "r",
+        encoding="utf-8",
+    ) as f:
+        data = json.load(f)
+    line_rerank_results = data["line_reranker_results"]
     # Reasoner
     reasoner = QwenReasoner(
         model_name=config["reasoner"]["model_name"],
@@ -229,15 +236,15 @@ def modular_eval(config):
         with_evidence=config["reasoner"]["with_evidence"],
         language=config["reasoner"]["language"],
         max_new_tokens=config["reasoner"]["max_new_tokens"],
-        thinking=False,
+        thinking=True,
         exclude_nei=False,
         use_int4=config["reasoner"]["use_int4"],
         output_w_reason=config["reasoner"]["output_w_reason"],
     )
     reasoner_result = reasoner_module(line_rerank_results, reasoner)
-    total_eval_result["reasoner_result"] = reasoner_result
     reasoner_score = strict_classification_metrics(reasoner_result, verbose=True)
-    total_eval_result["reasoner_score"] = reasoner_score
+    # total_eval_result["reasoner_result"] = reasoner_result
+    # total_eval_result["reasoner_score"] = reasoner_score
     # Save result
     if json_save_path:
         with open(json_save_path, "w", encoding="utf-8") as f:

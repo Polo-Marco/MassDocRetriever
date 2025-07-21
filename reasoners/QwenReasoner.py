@@ -90,9 +90,12 @@ class QwenReasoner:
         generated_ids = self.model.generate(
             **model_inputs,
             max_new_tokens=self.max_new_tokens,  # Reasoning doesn't need to be long
-            temperature=0.2,
-            num_beams=1,  # for efficiency
-            do_sample=False,
+            temperature=0.6,
+            top_p=0.95,
+            top_k=20,
+            min_p=0,
+            do_sample=True,  # Important: this enables non-greedy, stochastic decoding
+            num_beams=1,
         )
         output_ids = generated_ids[0][len(model_inputs.input_ids[0]) :].tolist()
 
@@ -157,9 +160,12 @@ class QwenReasoner:
         generated_ids = self.model.generate(
             **model_inputs,
             max_new_tokens=self.max_new_tokens,
-            temperature=0.2,
+            temperature=0.01,
+            top_p=0.95,
+            top_k=20,
+            min_p=0,
+            do_sample=True,  # Important: this enables non-greedy, stochastic decoding
             num_beams=1,
-            do_sample=False,
         )
 
         # Parse output for each example

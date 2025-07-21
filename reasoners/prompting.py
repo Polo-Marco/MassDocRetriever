@@ -6,7 +6,7 @@ def build_claim_verification_prompt(
     evidence_list=None,
     language="en",
     with_evidence=True,
-    exclude_nei=True,
+    exclude_nei=False,
     output_w_reason=False,
 ):
     """
