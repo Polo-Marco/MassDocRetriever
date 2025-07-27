@@ -23,6 +23,7 @@ class QwenReasoner:
         output_w_reason=False,
         exclude_nei=False,
         use_int4=True,
+        max_length = 768
     ):
         self.max_new_tokens = max_new_tokens
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
@@ -31,6 +32,7 @@ class QwenReasoner:
         self.thinking = thinking
         self.output_w_reason = output_w_reason
         self.exclude_nei = exclude_nei
+        self.max_length = max_length
         # Int4 loading
         if use_int4:
             bnb_config = BitsAndBytesConfig(
@@ -136,36 +138,37 @@ class QwenReasoner:
             for claim, evidence in zip(batch_claims, batch_evidence_lists)
         ]
 
-        messages_batch = [[{"role": "user", "content": prompt}] for prompt in prompts]
-        text_batch = [
-            self.tokenizer.apply_chat_template(
-                messages,
-                tokenize=False,
-                add_generation_prompt=True,
-                enable_thinking=self.thinking,
-            )
-            for messages in messages_batch
-        ]
+        # messages_batch = [[{"role": "user", "content": prompt}] for prompt in prompts]
+        # text_batch = [
+        #     self.tokenizer.apply_chat_template(
+        #         messages,
+        #         tokenize=False,
+        #         add_generation_prompt=True,
+        #         enable_thinking=self.thinking,
+        #     )
+        #     for messages in messages_batch
+        # ]
 
         # Tokenize in batch (pad to longest in batch)
         model_inputs = self.tokenizer(
-            text_batch,
+            prompts,
             return_tensors="pt",
-            padding=True,
+            padding="max_length",
             truncation=True,
-            max_length=512,
+            max_length=self.max_length,
         ).to(self.model.device)
 
         # Generate in batch
         generated_ids = self.model.generate(
             **model_inputs,
             max_new_tokens=self.max_new_tokens,
-            temperature=0.01,
+            temperature=0.2,
             top_p=0.95,
             top_k=20,
             min_p=0,
             do_sample=True,  # Important: this enables non-greedy, stochastic decoding
             num_beams=1,
+            pad_token_id=self.tokenizer.eos_token_id,
         )
 
         # Parse output for each example
@@ -199,6 +202,8 @@ class QwenReasoner:
                 }
             )
         return outputs
+    
+
 
     def _parse_output(self, text):
         """

@@ -33,13 +33,18 @@ class F1ReasonerMetric:
     def __call__(self, eval_preds):
         preds, labels = eval_preds
         # Replace -100 in labels with pad_token_id for decoding
-        labels = np.where(labels == -100, self.tokenizer.pad_token_id, labels)
+        labels = [
+            np.where(arr == -100, self.tokenizer.pad_token_id, arr)
+            for arr in labels
+        ]
         # print(labels)
         pred_strs = self.tokenizer.batch_decode(preds, skip_special_tokens=True)
         label_strs = self.tokenizer.batch_decode(labels, skip_special_tokens=True)
+        # print(pred_strs)
         pred_labels = [parse_label(x) for x in pred_strs]
         gold_labels = [parse_label(x) for x in label_strs]
         # print(pred_labels)
+        # print(gold_labels)
         f1 = f1_score(gold_labels, pred_labels, average="macro", labels=self.label_list)
         precision = precision_score(
             gold_labels,

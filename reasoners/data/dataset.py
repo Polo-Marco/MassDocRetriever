@@ -62,6 +62,7 @@ class ReasonerSFTDataset(Dataset):
         output_w_reason=True,
         debug=False,
         shuffle_evidence=True,
+        enable_thinking=False,
     ):
         self.samples = jsonl_list
         self.tokenizer = tokenizer
@@ -69,6 +70,7 @@ class ReasonerSFTDataset(Dataset):
         self.output_w_reason = output_w_reason
         self.shuffle_evidence = shuffle_evidence
         self.debug = debug
+        self.enable_thinking=enable_thinking
 
     def __getitem__(self, idx):
         item = self.samples[idx]
@@ -90,7 +92,10 @@ class ReasonerSFTDataset(Dataset):
             target = f"label: {label}\nreason: {reason}"
         else:
             target = f"label: {label}"
-        full_text = f"{prompt}\n{target}"
+        messages = [{"role": "user", "content": prompt}]
+        text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True, 
+                                                  enable_thinking=self.enable_thinking)
+        full_text = f"{text}\n{target}"
 
         # Tokenize the whole text
         encoding = self.tokenizer(
@@ -103,7 +108,7 @@ class ReasonerSFTDataset(Dataset):
         encoding = {k: v.squeeze(0) for k, v in encoding.items()}
         # Tokenize prompt to get its length in tokens
         prompt_enc = self.tokenizer(
-            prompt,
+            text,
             padding="max_length",
             truncation=True,
             max_length=self.max_length,

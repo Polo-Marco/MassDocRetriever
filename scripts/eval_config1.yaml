@@ -60,14 +60,17 @@ line_reranker:
 
 reasoner:
   model_name: "Qwen/Qwen3-8B"
-  model_path : "./models/qwen3_8b_reasoner_labelonly_ckpt/checkpoint-190"
+  model_path : "./models/qwen3_8b_reasoner_labelonly_ckpt1/checkpoint-1140"
   device: "cuda"
   language: "zh"
   with_evidence: true
   use_int4: true
   output_w_reason: false
-  max_new_tokens: 64
-  batch_size: 128
+  max_new_tokens: 256
+  batch_size: 100
+  max_length: 768
+#qwen3_8b_reasoner_reason_ckpt1/checkpoint-4085
+#qwen3_8b_reasoner_labelonly_ckpt1/checkpoint-1140"
 
 # Evaluation parameters
 cutoff_list: [1, 2, 3, 4, 5, 10, 15, 20, 25, 50, 100]

@@ -240,16 +240,18 @@ def modular_eval(config):
         exclude_nei=False,
         use_int4=config["reasoner"]["use_int4"],
         output_w_reason=config["reasoner"]["output_w_reason"],
+        max_length=config["reasoner"]["max_length"],
     )
-    reasoner_result = reasoner_module(line_rerank_results, reasoner)
+    reasoner_result = reasoner_module(line_rerank_results, reasoner,batch_size=config["reasoner"]["batch_size"])
     reasoner_score = strict_classification_metrics(reasoner_result, verbose=True)
+    print(reasoner_result[0])
     # total_eval_result["reasoner_result"] = reasoner_result
     # total_eval_result["reasoner_score"] = reasoner_score
     # Save result
-    if json_save_path:
-        with open(json_save_path, "w", encoding="utf-8") as f:
-            json.dump(total_eval_result, f, ensure_ascii=False, indent=2)
-        print(f"\nResults saved to {json_save_path}")
+    # if json_save_path:
+    #     with open(json_save_path, "w", encoding="utf-8") as f:
+    #         json.dump(total_eval_result, f, ensure_ascii=False, indent=2)
+    #     print(f"\nResults saved to {json_save_path}")
 
 
 import argparse

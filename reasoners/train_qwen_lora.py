@@ -60,7 +60,7 @@ lora_config = LoraConfig(
 
 model = get_peft_model(base_model, lora_config)  # fundation model
 # fine tuned model
-# model = PeftModel.from_pretrained(base_model, "./models/qwen3_8b_reasoner_labelonly_ckpt1/checkpoint-722")
+# model = PeftModel.from_pretrained(base_model, "./models/qwen3_8b_reasoner_labelonly_chat/checkpoint-2945")
 
 # release base model memory
 del base_model
@@ -69,10 +69,10 @@ if torch.cuda.is_available():
     torch.cuda.empty_cache()
 # Data and collator
 train_dataset = ReasonerSFTDataset(
-    train, tokenizer, max_length=768, output_w_reason=True, shuffle_evidence=True
+    train, tokenizer, max_length=768, output_w_reason=False, shuffle_evidence=True,enable_thinking=False
 )
 val_dataset = ReasonerSFTDataset(
-    dev, tokenizer, max_length=768, output_w_reason=True, shuffle_evidence=False
+    dev, tokenizer, max_length=768, output_w_reason=False, shuffle_evidence=False,enable_thinking=False
 )
 # inference_dataset = ReasonerSFTEvalDataset(dev, tokenizer,max_length=512,output_w_reason=False)
 collator = DataCollatorForLanguageModeling(tokenizer, mlm=False)
@@ -80,9 +80,8 @@ collator = DataCollatorForLanguageModeling(tokenizer, mlm=False)
 from metrics import (F1ReasonerMetric,  # Use your provided implementations
                      parse_label)
 
-
 @torch.no_grad()
-def predict_batch(dataset, model, tokenizer, batch_size=4, max_new_tokens=256):
+def predict_batch(dataset, model, tokenizer, batch_size=4, max_new_tokens=256, debug=False):
     model.eval()
     device = model.device
     pred_ids = []
@@ -91,13 +90,17 @@ def predict_batch(dataset, model, tokenizer, batch_size=4, max_new_tokens=256):
     for i in tqdm(range(0, len(dataset), batch_size)):
         batch = [dataset[j] for j in range(i, min(i + batch_size, len(dataset)))]
         input_ids = torch.stack([b["prompt_enc_ids"] for b in batch]).to(device)
-        attention_mask = torch.stack([b["prompt_attention_mask"] for b in batch]).to(
-            device
-        )
-        labels = (
-            torch.stack([b["labels"] for b in batch]).cpu().numpy()
-        )  # shape: (batch, seq_len)
+        attention_mask = torch.stack([b["prompt_attention_mask"] for b in batch]).to(device)
+        labels = torch.stack([b["labels"] for b in batch]).cpu().numpy()
         label_ids.append(labels)
+
+        if debug:
+            print(f"\n[DEBUG] Batch {i//batch_size}:")
+            print(f"  input_ids shape: {input_ids.shape}")
+            print(f"  attention_mask shape: {attention_mask.shape}")
+            print(f"  labels shape: {labels.shape}")
+            print(f"  input_ids[0]: {input_ids[0].tolist()}")
+            print(f"  labels[0]: {labels[0].tolist()}")
 
         outputs = model.generate(
             input_ids=input_ids,
@@ -107,30 +110,37 @@ def predict_batch(dataset, model, tokenizer, batch_size=4, max_new_tokens=256):
             top_p=0.95,
             top_k=20,
             min_p=0,
-            do_sample=True,  # Important: this enables non-greedy, stochastic decoding
+            do_sample=True,
             num_beams=1,
             pad_token_id=tokenizer.eos_token_id,
         )
-        pred_ids.append(outputs.cpu().numpy())
+        pred = outputs.cpu().numpy()
+        pred_ids.append(pred)
 
-    # Concatenate all batches
-    pred_ids = np.concatenate(pred_ids, axis=0)
-    label_ids = np.concatenate(label_ids, axis=0)
+        if debug:
+            print(f"  outputs shape: {pred.shape}")
+            print(f"  outputs[0]: {pred[0].tolist()}")
+
+    # pred_ids = np.concatenate(pred_ids, axis=0)
+    # label_ids = np.concatenate(label_ids, axis=0)
+    pred_ids = [pred for batch in pred_ids for pred in batch]  # list of 1D arrays
+    label_ids = [label for batch in label_ids for label in batch]  # same
+
     return pred_ids, label_ids
 
 
 # ---- Run Inference ----
 eval_metrics = F1ReasonerMetric(tokenizer)
 
-# pred_ids, label_ids = predict_batch(val_dataset, model, tokenizer,batch_size=100, max_new_tokens=256)
-# # # Compute F1 (uses your tokenizer, which must be in scope)
-# metric = eval_metrics.__call__((pred_ids, label_ids))
-# print("=== Zero-Shot Macro F1 ===")
-# print(metric)
+pred_ids, label_ids = predict_batch(val_dataset, model, tokenizer,batch_size=100, max_new_tokens=64,debug=False)
+# # Compute F1 (uses your tokenizer, which must be in scope)
+metric = eval_metrics.__call__((pred_ids, label_ids))
+print("=== Zero-Shot Macro F1 ===")
+print(metric)
 # exit()
 # Training arguments
 training_args = TrainingArguments(
-    output_dir="./models/qwen3_8b_reasoner_reason_ckpt1",
+    output_dir="./models/qwen3_8b_reasoner_reason_chat1",
     per_device_train_batch_size=2,
     per_device_eval_batch_size=2,
     gradient_accumulation_steps=8,
@@ -150,9 +160,9 @@ training_args = TrainingArguments(
     load_best_model_at_end=True,
     metric_for_best_model="eval_loss",
     greater_is_better=False,
-    logging_steps=10,
+    logging_steps=50,
     report_to=["wandb"],
-    run_name="Qwen3-8B-reason",
+    run_name="Qwen3-8B-reason_chat",
     remove_unused_columns=False,
 )
 
@@ -164,14 +174,14 @@ trainer = Trainer(
     train_dataset=train_dataset,
     eval_dataset=val_dataset,
     # data_collator=collator,
-    callbacks=[EarlyStoppingCallback(early_stopping_patience=10)],
+    callbacks=[EarlyStoppingCallback(early_stopping_patience=5)],
     # compute_metrics=eval_metrics,
     # preprocess_logits_for_metrics=preprocess_logits_for_metrics,
 )
 
 wandb.init(
     project="Claim_verify_w_reason_zh_TW",  # ✅ Set your project name
-    name="Qwen3-8B-reason2",  # ✅ Set the run name
+    name="Qwen3-8B-reason_chat_noThink",  # ✅ Set the run name
     config=training_args,  # ✅ Log hyperparameters
 )
 # Start
@@ -179,7 +189,7 @@ trainer.train()
 
 # # Evaluate
 pred_ids, label_ids = predict_batch(
-    val_dataset, model, tokenizer, batch_size=100, max_new_tokens=256
+    val_dataset, model, tokenizer, batch_size=100, max_new_tokens=64
 )
 # Compute F1 (uses your tokenizer, which must be in scope)
 metric = eval_metrics.__call__((pred_ids, label_ids))
